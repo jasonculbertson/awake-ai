@@ -5,9 +5,9 @@
     <key>LSUIElement</key>
     <true/>
     <key>CFBundleName</key>
-    <string>Awake</string>
+    <string>Awake AI</string>
     <key>CFBundleDisplayName</key>
-    <string>Awake</string>
+    <string>Awake AI</string>
     <key>CFBundleIdentifier</key>
     <string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
     <key>CFBundleVersion</key>

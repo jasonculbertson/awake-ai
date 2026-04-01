@@ -57,7 +57,7 @@ enum AIProvider: String, Codable, CaseIterable, Identifiable {
 }
 
 enum Constants {
-    static let appName = "Awake"
+    static let appName = "Awake AI"
     static let keychainService = "com.jasonculbertson.awake"
     static let evaluationInterval: TimeInterval = 5
     static let processPollingInterval: TimeInterval = 15

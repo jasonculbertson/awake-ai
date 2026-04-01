@@ -1,7 +1,7 @@
 # Awake — App Store Submission Metadata
 
 ## App Name
-Awake - AI Sleep Manager
+Awake AI
 
 ## Subtitle (30 chars max)
 AI-Powered Sleep Prevention
