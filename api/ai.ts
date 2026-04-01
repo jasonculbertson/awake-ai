@@ -1,7 +1,9 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { createHmac, timingSafeEqual } from "crypto";
+import { createHmac, timingSafeEqual, X509Certificate } from "crypto";
 import { importX509, jwtVerify } from "jose";
-import { X509Certificate } from "crypto";
+
+// Increase Vercel function timeout (Hobby plan max = 60s)
+export const maxDuration = 30;
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -230,7 +232,7 @@ export default async function handler(req: Request): Promise<Response> {
 
   try {
     const message = await anthropic.messages.create({
-      model: "claude-haiku-4-5-20251001",
+      model: "claude-haiku-4-5",
       max_tokens: 150,
       system: buildSystemPrompt(context),
       messages: [{ role: "user", content: command }],
