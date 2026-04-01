@@ -1,22 +1,6 @@
 {
   "identifier" : "com.jasonculbertson.awake.storekit",
-  "nonConsumableProducts" : [
-    {
-      "displayPrice" : "9.99",
-      "familyShareable" : false,
-      "internalID" : "awake_ai_pro",
-      "localizations" : [
-        {
-          "description" : "Unlock AI commands in Awake AI forever. Bring your own API key.",
-          "displayName" : "Awake AI Pro",
-          "locale" : "en_US"
-        }
-      ],
-      "productID" : "com.jasonculbertson.awake.ai.pro",
-      "referenceName" : "Awake AI Pro (Lifetime)",
-      "type" : "NonConsumable"
-    }
-  ],
+  "nonConsumableProducts" : [],
   "settings" : {
     "_failTransactionsEnabled" : false,
     "_interruptedPurchasesEnabled" : false,
@@ -32,14 +16,14 @@
         {
           "adHocOffers" : [],
           "codeOffers" : [],
-          "displayPrice" : "1.99",
+          "displayPrice" : "0.99",
           "familyShareable" : false,
           "groupNumber" : 1,
           "internalID" : "awake_ai_monthly",
           "introductoryOffer" : null,
           "localizations" : [
             {
-              "description" : "Unlimited AI commands in Awake AI. Bring your own API key.",
+              "description" : "Unlimited AI commands in Awake AI. Works with our AI or your own API key.",
               "displayName" : "Awake AI Monthly",
               "locale" : "en_US"
             }
@@ -52,14 +36,14 @@
         {
           "adHocOffers" : [],
           "codeOffers" : [],
-          "displayPrice" : "14.99",
+          "displayPrice" : "7.99",
           "familyShareable" : false,
           "groupNumber" : 2,
           "internalID" : "awake_ai_yearly",
           "introductoryOffer" : null,
           "localizations" : [
             {
-              "description" : "Unlimited AI commands in Awake AI. Bring your own API key.",
+              "description" : "Unlimited AI commands in Awake AI. Works with our AI or your own API key.",
               "displayName" : "Awake AI Annual",
               "locale" : "en_US"
             }

@@ -1,0 +1,11 @@
+{
+  "functions": {
+    "api/**/*.ts": {
+      "runtime": "@vercel/node"
+    }
+  },
+  "rewrites": [
+    { "source": "/privacy", "destination": "/docs/privacy.html" },
+    { "source": "/", "destination": "/docs/index.html" }
+  ]
+}

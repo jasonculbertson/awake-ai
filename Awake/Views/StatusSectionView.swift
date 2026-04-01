@@ -18,17 +18,8 @@ struct StatusSectionView: View {
             }
             .padding(12)
 
-            // AI chat area fills remaining space
-            if viewModel.storeKit.hasAIAccess(hasBYOK: viewModel.isAIConfigured) {
-                if viewModel.isAIConfigured {
-                    aiChatSection
-                } else {
-                    // Purchased but no key yet — prompt to add key
-                    aiKeyPrompt
-                }
-            } else {
-                PaywallView()
-            }
+            // AI chat area — always visible (BYOK or managed backend)
+            aiChatSection
         }
         .onAppear {
             viewModel.refreshAIStatus()
@@ -166,6 +157,17 @@ struct StatusSectionView: View {
 
                     Spacer()
 
+                    // Show free request badge when using managed AI (no BYOK, no subscription)
+                    if !viewModel.isAIConfigured && !viewModel.storeKit.hasPurchased {
+                        Text("\(Constants.freeAIRequestLimit) free tries")
+                            .font(.caption2.bold())
+                            .foregroundStyle(.orange)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(Color.orange.opacity(0.12))
+                            .clipShape(Capsule())
+                    }
+
                     if !aiMessages.isEmpty {
                         Button(action: { aiMessages.removeAll() }) {
                             Text("Clear")
@@ -238,10 +240,18 @@ struct StatusSectionView: View {
                 let command = try await viewModel.aiService.interpretCommand(
                     text,
                     currentRules: viewModel.rulesEngine.rules,
-                    watchList: viewModel.rulesEngine.watchList
+                    watchList: viewModel.rulesEngine.watchList,
+                    transactionJWS: viewModel.storeKit.latestTransactionJWS
                 )
                 let result = viewModel.rulesEngine.applyCommand(command)
                 aiMessages.append(ChatMessage(role: .assistant, content: result))
+            } catch AIServiceError.freeRequestsExhausted {
+                // Show paywall by clearing the AI configured state
+                aiMessages.append(ChatMessage(
+                    role: .system,
+                    content: "You've used your 3 free AI requests. Subscribe for unlimited, or add your own API key."
+                ))
+                viewModel.storeKit.hasPurchased = false // force paywall on next open
             } catch {
                 aiMessages.append(ChatMessage(role: .assistant, content: error.localizedDescription))
             }

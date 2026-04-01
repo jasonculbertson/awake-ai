@@ -15,6 +15,7 @@ final class StoreKitService: ObservableObject {
     @Published var hasPurchased: Bool = false
     @Published var isPurchasing: Bool = false
     @Published var purchaseError: String?
+    @Published var latestTransactionJWS: String?
 
     private let logger = Logger(subsystem: Constants.appName, category: "StoreKit")
     private var listenerTask: Task<Void, Never>?
@@ -36,7 +37,6 @@ final class StoreKitService: ObservableObject {
     func loadProducts() async {
         do {
             let products = try await Product.products(for: [
-                Self.proProductID,
                 Self.monthlyProductID,
                 Self.yearlyProductID,
             ])
@@ -99,17 +99,23 @@ final class StoreKitService: ObservableObject {
 
     func updatePurchaseStatus() async {
         var purchased = false
+        var jwsToken: String?
         for await result in Transaction.currentEntitlements {
             guard case .verified(let transaction) = result else { continue }
             guard transaction.revocationDate == nil else { continue }
             switch transaction.productID {
             case Self.proProductID, Self.monthlyProductID, Self.yearlyProductID:
                 purchased = true
+                if case .verified = result {
+                    // jwsRepresentation is on VerificationResult, capture via the outer result
+                    jwsToken = result.jwsRepresentation
+                }
             default:
                 break
             }
         }
         hasPurchased = purchased
+        latestTransactionJWS = jwsToken
     }
 
     /// AI is unlocked if the user has purchased any tier OR has their own API key

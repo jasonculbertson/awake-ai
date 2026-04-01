@@ -6,6 +6,7 @@ enum AIServiceError: Error, LocalizedError {
     case invalidResponse
     case apiError(String)
     case networkError(Error)
+    case freeRequestsExhausted(used: Int, limit: Int)
 
     var errorDescription: String? {
         switch self {
@@ -17,6 +18,8 @@ enum AIServiceError: Error, LocalizedError {
             return "API error: \(message)"
         case .networkError(let error):
             return "Network error: \(error.localizedDescription)"
+        case .freeRequestsExhausted:
+            return "You've used all 3 free AI requests. Subscribe for unlimited."
         }
     }
 }
@@ -25,31 +28,98 @@ final class AIService {
     private let keychainService: KeychainService
     private let logger = Logger(subsystem: Constants.appName, category: "AIService")
 
+    /// True if user has their own API key (BYOK — always free)
     var isConfigured: Bool { keychainService.hasAnyAPIKey }
 
     init(keychainService: KeychainService) {
         self.keychainService = keychainService
     }
 
-    func interpretCommand(_ userInput: String, currentRules: [AwakeRule], watchList: [AppWatchEntry]) async throws -> AICommand {
-        guard let provider = keychainService.configuredProvider,
-              let apiKey = keychainService.getAPIKey(for: provider) else {
-            throw AIServiceError.noAPIKey
+    // MARK: - Main entry point
+
+    func interpretCommand(
+        _ userInput: String,
+        currentRules: [AwakeRule],
+        watchList: [AppWatchEntry],
+        transactionJWS: String? = nil
+    ) async throws -> AICommand {
+        // BYOK path — use user's own key, no limits
+        if let provider = keychainService.configuredProvider,
+           let apiKey = keychainService.getAPIKey(for: provider) {
+            let systemPrompt = buildSystemPrompt(currentRules: currentRules, watchList: watchList)
+            let text: String
+            switch provider {
+            case .anthropic:
+                text = try await callAnthropic(apiKey: apiKey, systemPrompt: systemPrompt, userInput: userInput)
+            case .openai:
+                text = try await callOpenAI(apiKey: apiKey, systemPrompt: systemPrompt, userInput: userInput)
+            case .gemini:
+                text = try await callGemini(apiKey: apiKey, systemPrompt: systemPrompt, userInput: userInput)
+            }
+            return parseCommand(text)
         }
 
-        let systemPrompt = buildSystemPrompt(currentRules: currentRules, watchList: watchList)
+        // Managed AI path — use our backend (free tier or subscription)
+        return try await callManagedAI(
+            userInput: userInput,
+            currentRules: currentRules,
+            watchList: watchList,
+            transactionJWS: transactionJWS
+        )
+    }
 
-        let text: String
-        switch provider {
-        case .anthropic:
-            text = try await callAnthropic(apiKey: apiKey, systemPrompt: systemPrompt, userInput: userInput)
-        case .openai:
-            text = try await callOpenAI(apiKey: apiKey, systemPrompt: systemPrompt, userInput: userInput)
-        case .gemini:
-            text = try await callGemini(apiKey: apiKey, systemPrompt: systemPrompt, userInput: userInput)
+    // MARK: - Managed AI (our backend)
+
+    private func callManagedAI(
+        userInput: String,
+        currentRules: [AwakeRule],
+        watchList: [AppWatchEntry],
+        transactionJWS: String?
+    ) async throws -> AICommand {
+        let rules = currentRules.filter(\.isEnabled).map { "- \($0.label)" }
+        let apps = watchList.filter(\.isEnabled).map { "- \($0.appName)" }
+
+        var payload: [String: Any] = [
+            "command": userInput,
+            "deviceId": Constants.deviceId,
+            "context": [
+                "rules": rules,
+                "watchList": apps,
+            ],
+        ]
+        if let jws = transactionJWS {
+            payload["transactionJWS"] = jws
         }
 
-        return parseCommand(text)
+        var request = URLRequest(url: URL(string: Constants.managedAIEndpoint)!)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "content-type")
+        request.httpBody = try JSONSerialization.data(withJSONObject: payload)
+        request.timeoutInterval = 30
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            throw AIServiceError.invalidResponse
+        }
+
+        // Check for limit-reached error
+        if let code = json["code"] as? String, code == "LIMIT_REACHED" {
+            let used = json["freeRequestsUsed"] as? Int ?? Constants.freeAIRequestLimit
+            let limit = json["freeLimit"] as? Int ?? Constants.freeAIRequestLimit
+            throw AIServiceError.freeRequestsExhausted(used: used, limit: limit)
+        }
+
+        if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode != 200 {
+            let msg = json["error"] as? String ?? "HTTP \(httpResponse.statusCode)"
+            throw AIServiceError.apiError(msg)
+        }
+
+        guard let result = json["result"] as? String else {
+            throw AIServiceError.invalidResponse
+        }
+
+        return parseCommand(result)
     }
 
     // MARK: - System Prompt

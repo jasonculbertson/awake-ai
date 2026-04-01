@@ -7,7 +7,11 @@ Awake AI
 AI-Powered Sleep Prevention
 
 ## Price
-$4.99 (Tier 5)
+Free (with In-App Purchases)
+
+## In-App Purchases
+- Awake AI Monthly: $0.99/month (unlimited AI commands)
+- Awake AI Annual: $7.99/year (unlimited AI commands)
 
 ## Category
 Primary: Utilities
@@ -15,7 +19,9 @@ Secondary: Productivity
 
 ## Description (4000 chars max)
 
-Awake is the first AI-powered sleep prevention app for Mac. Go beyond simple on/off toggles — just tell Awake what you want in plain English, and it handles the rest.
+Awake AI is the first AI-powered sleep prevention app for Mac. Free to download with all core features included. Go beyond simple on/off toggles — just tell Awake what you want in plain English, and it handles the rest.
+
+Try 3 AI commands free. Subscribe for $0.99/month for unlimited — or use your own API key for free, forever.
 
 "Stay awake until my build finishes."
 "Keep the screen on when Cursor is open."
