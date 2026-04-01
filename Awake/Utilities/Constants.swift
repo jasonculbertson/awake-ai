@@ -59,7 +59,7 @@ enum AIProvider: String, Codable, CaseIterable, Identifiable {
 enum Constants {
     static let appName = "Awake AI"
     static let keychainService = "com.jasonculbertson.awake"
-    static let managedAIEndpoint = "https://awake-ai.vercel.app/api/ai"
+    static let managedAIEndpoint = "https://awake-ai-delta.vercel.app/api/ai"
     static let freeAIRequestLimit = 3
     static let evaluationInterval: TimeInterval = 5
 
