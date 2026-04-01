@@ -82,13 +82,14 @@ final class AIService {
         var payload: [String: Any] = [
             "command": userInput,
             "deviceId": Constants.deviceId,
-            "context": [
-                "rules": rules,
-                "watchList": apps,
-            ],
+            "context": ["rules": rules, "watchList": apps],
         ]
         if let jws = transactionJWS {
             payload["transactionJWS"] = jws
+        }
+        // Attach stored usage token so server can verify and increment count
+        if let token = UserDefaults.standard.string(forKey: "ai_usage_token") {
+            payload["usageToken"] = token
         }
 
         var request = URLRequest(url: URL(string: Constants.managedAIEndpoint)!)
@@ -103,7 +104,7 @@ final class AIService {
             throw AIServiceError.invalidResponse
         }
 
-        // Check for limit-reached error
+        // Hit free limit — show paywall
         if let code = json["code"] as? String, code == "LIMIT_REACHED" {
             let used = json["freeRequestsUsed"] as? Int ?? Constants.freeAIRequestLimit
             let limit = json["freeLimit"] as? Int ?? Constants.freeAIRequestLimit
@@ -117,6 +118,11 @@ final class AIService {
 
         guard let result = json["result"] as? String else {
             throw AIServiceError.invalidResponse
+        }
+
+        // Persist the updated signed usage token returned by the server
+        if let newToken = json["usageToken"] as? String {
+            UserDefaults.standard.set(newToken, forKey: "ai_usage_token")
         }
 
         return parseCommand(result)

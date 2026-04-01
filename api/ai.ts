@@ -1,5 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { kv } from "@vercel/kv";
+import { createHmac, timingSafeEqual } from "crypto";
 import { importX509, jwtVerify } from "jose";
 import { X509Certificate } from "crypto";
 
@@ -7,7 +7,60 @@ const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 const FREE_LIMIT = 3;
 
-// Apple Root CA G3 — used to verify StoreKit JWS transaction signatures
+// Used to sign usage tokens — set USAGE_TOKEN_SECRET in Vercel env vars
+const TOKEN_SECRET = process.env.USAGE_TOKEN_SECRET ?? "dev-secret-change-me";
+
+const SUBSCRIPTION_PRODUCT_IDS = new Set([
+  "com.jasonculbertson.awake.ai.monthly",
+  "com.jasonculbertson.awake.ai.yearly",
+]);
+
+// ─── Usage Token (no database needed) ────────────────────────────────────────
+// Format: base64( JSON { deviceId, count, issuedAt } ) + "." + HMAC signature
+// Signed with TOKEN_SECRET so client can't tamper with count.
+
+interface UsagePayload {
+  deviceId: string;
+  count: number;
+  issuedAt: number;
+}
+
+function signToken(payload: UsagePayload): string {
+  const data = Buffer.from(JSON.stringify(payload)).toString("base64url");
+  const sig = createHmac("sha256", TOKEN_SECRET).update(data).digest("base64url");
+  return `${data}.${sig}`;
+}
+
+function verifyToken(token: string, expectedDeviceId: string): UsagePayload | null {
+  try {
+    const [data, sig] = token.split(".");
+    if (!data || !sig) return null;
+
+    const expectedSig = createHmac("sha256", TOKEN_SECRET)
+      .update(data)
+      .digest("base64url");
+
+    // Constant-time comparison to prevent timing attacks
+    const sigBuf = Buffer.from(sig);
+    const expBuf = Buffer.from(expectedSig);
+    if (sigBuf.length !== expBuf.length) return null;
+    if (!timingSafeEqual(sigBuf, expBuf)) return null;
+
+    const payload: UsagePayload = JSON.parse(
+      Buffer.from(data, "base64url").toString("utf8")
+    );
+
+    // Ensure token belongs to this device
+    if (payload.deviceId !== expectedDeviceId) return null;
+
+    return payload;
+  } catch {
+    return null;
+  }
+}
+
+// ─── Apple StoreKit JWS verification ─────────────────────────────────────────
+
 const APPLE_ROOT_CA_G3 = `-----BEGIN CERTIFICATE-----
 MIICQzCCAcmgAwIBAgIILcX8iNLFS5UwCgYIKoZIzj0EAwMwZzEbMBkGA1UEAwwS
 QXBwbGUgUm9vdCBDQSAtIEczMSYwJAYDVQQLDB1BcHBsZSBDZXJ0aWZpY2F0aW9u
@@ -24,13 +77,6 @@ Af8wDgYDVR0PAQH/BAQDAgGGMAoGCCqGSM49BAMDA2gAMGUCMQCD6cHEFl4aXTQY
 JVFklsGHFjNXAFEIpRaV3zTD31Pj3k/WoFnJWn15MqvUUy/JaAo=
 -----END CERTIFICATE-----`;
 
-const SUBSCRIPTION_PRODUCT_IDS = new Set([
-  "com.jasonculbertson.awake.ai.monthly",
-  "com.jasonculbertson.awake.ai.yearly",
-  "com.jasonculbertson.awake.ai.pro",
-]);
-
-// Verify Apple StoreKit JWS transaction and return payload if valid subscription
 async function verifySubscription(jws: string): Promise<boolean> {
   try {
     const parts = jws.split(".");
@@ -48,7 +94,6 @@ async function verifySubscription(jws: string): Promise<boolean> {
     const leafPem = toPem(x5c[0]);
     const intPem = toPem(x5c[1]);
 
-    // Verify cert chain: leaf ← intermediate ← Apple Root CA G3
     const rootCert = new X509Certificate(APPLE_ROOT_CA_G3);
     const intCert = new X509Certificate(intPem);
     const leafCert = new X509Certificate(leafPem);
@@ -56,22 +101,17 @@ async function verifySubscription(jws: string): Promise<boolean> {
     if (!intCert.verify(rootCert.publicKey)) return false;
     if (!leafCert.verify(intCert.publicKey)) return false;
 
-    // Verify JWS signature
     const publicKey = await importX509(leafPem, "ES256");
     const { payload } = await jwtVerify(jws, publicKey);
-
     const p = payload as Record<string, unknown>;
 
-    // Check it's one of our subscription products
     if (!SUBSCRIPTION_PRODUCT_IDS.has(p.productId as string)) return false;
-
-    // Check not revoked
     if (p.revocationDate) return false;
-
-    // For subscriptions, check expiry
     if (p.expiresDate) {
       const expiresMs =
-        typeof p.expiresDate === "number" ? p.expiresDate : Number(p.expiresDate);
+        typeof p.expiresDate === "number"
+          ? p.expiresDate
+          : Number(p.expiresDate);
       if (Date.now() > expiresMs) return false;
     }
 
@@ -80,6 +120,8 @@ async function verifySubscription(jws: string): Promise<boolean> {
     return false;
   }
 }
+
+// ─── System prompt ────────────────────────────────────────────────────────────
 
 function buildSystemPrompt(context?: {
   rules?: string[];
@@ -92,33 +134,11 @@ function buildSystemPrompt(context?: {
 Your ONLY job is to interpret sleep/wake commands and return structured JSON.
 Refuse any request unrelated to sleep prevention. For off-topic requests return: {"command":"unknown","message":"I can only help with sleep prevention commands."}
 
-TIMER COMMANDS:
-- {"command":"set_timer","duration_minutes":<int>}
-- {"command":"set_delayed_timer","delay_minutes":<int>,"duration_minutes":<int>}
-- {"command":"extend_timer","minutes":<int>}
-- {"command":"awake_until","hour":<0-23>,"minute":<0-59>}
-- {"command":"awake_at","hour":<0-23>,"minute":<0-59>,"duration_minutes":<int|null>}
-- {"command":"sleep_at","hour":<0-23>,"minute":<0-59>}
-- {"command":"pause","minutes":<int>}
-
-APP COMMANDS:
-- {"command":"watch_app","app_name":"<string>","mode":"running"|"frontmost"}
-- {"command":"unwatch_app","app_name":"<string>"}
-- {"command":"watch_process","process_name":"<string>"}
-
-SCHEDULE/BATTERY:
-- {"command":"set_schedule","start_hour":<int>,"end_hour":<int>,"days":[<1-7>]}
-- {"command":"set_battery_threshold","percentage":<int>}
-
-CONTROL:
-- {"command":"toggle","state":"on"|"off"}
-- {"command":"cancel_rule","name":"<string>"}
-- {"command":"clear_rules"}
-
-INFO:
-- {"command":"list_rules"}
-- {"command":"list_apps"}
-- {"command":"status"}
+TIMER: set_timer(duration_minutes), set_delayed_timer(delay_minutes,duration_minutes), extend_timer(minutes), awake_until(hour,minute), awake_at(hour,minute,duration_minutes?), sleep_at(hour,minute), pause(minutes)
+APPS: watch_app(app_name,mode:"running"|"frontmost"), unwatch_app(app_name), watch_process(process_name)
+SCHEDULE: set_schedule(start_hour,end_hour,days:[1-7]), set_battery_threshold(percentage)
+CONTROL: toggle(state:"on"|"off"), cancel_rule(name), clear_rules
+INFO: list_rules, list_apps, status
 
 Current rules: ${rules}
 Watched apps: ${apps}
@@ -126,20 +146,19 @@ Watched apps: ${apps}
 Respond with ONLY valid JSON. No markdown, no explanation.`;
 }
 
+// ─── Handler ──────────────────────────────────────────────────────────────────
+
 export default async function handler(req: Request): Promise<Response> {
   if (req.method !== "POST") {
     return new Response("Method not allowed", { status: 405 });
   }
 
-  // CORS for macOS app
-  const headers = {
-    "Content-Type": "application/json",
-    "Access-Control-Allow-Origin": "*",
-  };
+  const headers = { "Content-Type": "application/json" };
 
   let body: {
     command?: string;
     deviceId?: string;
+    usageToken?: string;
     transactionJWS?: string;
     context?: { rules?: string[]; watchList?: string[] };
   };
@@ -150,7 +169,7 @@ export default async function handler(req: Request): Promise<Response> {
     return Response.json({ error: "Invalid JSON" }, { status: 400, headers });
   }
 
-  const { command, deviceId, transactionJWS, context } = body;
+  const { command, deviceId, usageToken, transactionJWS, context } = body;
 
   if (!command || !deviceId) {
     return Response.json(
@@ -159,42 +178,56 @@ export default async function handler(req: Request): Promise<Response> {
     );
   }
 
-  // Sanitize deviceId (UUID format only)
   if (!/^[0-9a-f-]{36}$/i.test(deviceId)) {
-    return Response.json({ error: "Invalid deviceId" }, { status: 400, headers });
+    return Response.json(
+      { error: "Invalid deviceId" },
+      { status: 400, headers }
+    );
   }
 
-  // Check subscription
+  // ── Auth check ──────────────────────────────────────────────────────────────
+
   let isSubscriber = false;
   if (transactionJWS) {
     isSubscriber = await verifySubscription(transactionJWS);
   }
 
-  // If not subscriber, enforce free limit
-  let freeRequestsUsed = 0;
-  if (!isSubscriber) {
-    const kvKey = `usage:${deviceId}`;
-    const count = (await kv.get<number>(kvKey)) ?? 0;
-    freeRequestsUsed = count;
+  let newUsageToken: string | null = null;
 
-    if (count >= FREE_LIMIT) {
+  if (!isSubscriber) {
+    // Verify and increment usage token
+    let currentCount = 0;
+
+    if (usageToken) {
+      const payload = verifyToken(usageToken, deviceId);
+      if (payload) {
+        currentCount = payload.count;
+      }
+      // If token is invalid/tampered, treat as fresh (count=0)
+    }
+
+    if (currentCount >= FREE_LIMIT) {
       return Response.json(
         {
           error: "Free requests exhausted. Subscribe for unlimited AI.",
           code: "LIMIT_REACHED",
-          freeRequestsUsed: count,
+          freeRequestsUsed: currentCount,
           freeLimit: FREE_LIMIT,
         },
         { status: 402, headers }
       );
     }
 
-    // Increment usage
-    await kv.set(kvKey, count + 1, { ex: 60 * 60 * 24 * 365 }); // 1 year TTL
-    freeRequestsUsed = count + 1;
+    // Issue new signed token with incremented count
+    newUsageToken = signToken({
+      deviceId,
+      count: currentCount + 1,
+      issuedAt: Date.now(),
+    });
   }
 
-  // Make AI call using Haiku (cheapest, plenty capable for JSON commands)
+  // ── AI call ─────────────────────────────────────────────────────────────────
+
   try {
     const message = await anthropic.messages.create({
       model: "claude-haiku-4-5-20251001",
@@ -203,19 +236,20 @@ export default async function handler(req: Request): Promise<Response> {
       messages: [{ role: "user", content: command }],
     });
 
-    const text =
+    const result =
       message.content[0].type === "text" ? message.content[0].text : "";
 
     return Response.json(
       {
-        result: text,
-        freeRequestsUsed: isSubscriber ? null : freeRequestsUsed,
+        result,
+        usageToken: newUsageToken,
+        freeRequestsUsed: isSubscriber ? null : (newUsageToken ? JSON.parse(Buffer.from(newUsageToken.split(".")[0], "base64url").toString()).count : FREE_LIMIT),
         freeLimit: isSubscriber ? null : FREE_LIMIT,
       },
       { headers }
     );
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "AI call failed";
-    return Response.json({ error: message }, { status: 500, headers });
+    const msg = err instanceof Error ? err.message : "AI call failed";
+    return Response.json({ error: msg }, { status: 500, headers });
   }
 }
