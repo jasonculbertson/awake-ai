@@ -1,6 +1,6 @@
-export const maxDuration = 10;
+export const runtime = "edge";
 
-export default function handler(req: Request): Response {
+export default function handler(_req: Request): Response {
   return Response.json({
     ok: true,
     timestamp: new Date().toISOString(),

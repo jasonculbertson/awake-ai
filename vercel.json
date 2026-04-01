@@ -2,9 +2,5 @@
   "rewrites": [
     { "source": "/privacy", "destination": "/docs/privacy.html" },
     { "source": "/", "destination": "/docs/index.html" }
-  ],
-  "functions": {
-    "api/ai.ts": { "maxDuration": 30 },
-    "api/health.ts": { "maxDuration": 10 }
-  }
+  ]
 }
