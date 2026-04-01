@@ -1,0 +1,30 @@
+name: Awake
+options:
+  bundleIdPrefix: com.jasonculbertson
+  deploymentTarget:
+    macOS: "14.0"
+  xcodeVersion: "16.0"
+  createIntermediateGroups: true
+
+targets:
+  Awake:
+    type: application
+    platform: macOS
+    sources:
+      - Awake
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.jasonculbertson.awake
+        MARKETING_VERSION: "1.0.0"
+        CURRENT_PROJECT_VERSION: 1
+        SWIFT_VERSION: "5.9"
+        MACOSX_DEPLOYMENT_TARGET: "14.0"
+        INFOPLIST_FILE: Awake/Info.plist
+        CODE_SIGN_ENTITLEMENTS: Awake/Awake.entitlements
+        PRODUCT_NAME: Awake
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ENABLE_HARDENED_RUNTIME: YES
+        CODE_SIGN_STYLE: Automatic
+    scheme:
+      testTargets: []
+      gatherCoverageData: false
