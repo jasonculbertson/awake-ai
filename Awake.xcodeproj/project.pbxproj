@@ -8,16 +8,19 @@
 
 /* Begin PBXBuildFile section */
 		042BBCEE73C41184F4315869 /* AwakeApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1F7175870746206A87BB270 /* AwakeApp.swift */; };
+		0902505A94A88D83A63B374E /* StoreKitService.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBE746FD7C3E6FC95C0EB935 /* StoreKitService.swift */; };
 		0C213F612080E1E7E9F21279 /* LaunchAtLoginService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A18AB97278393C8A763D001 /* LaunchAtLoginService.swift */; };
 		0F6C1F45CDAD662A4EB4B5C7 /* MenuBarViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B74FB2A549CEBCEFF40B2888 /* MenuBarViewModel.swift */; };
 		107B2FDEF3287B172FA1F921 /* PersistenceService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07BB93F784043AAB36C8864A /* PersistenceService.swift */; };
 		151B07346385D55856C954FD /* AIChatViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22F47F9813535952516DB0BE /* AIChatViewModel.swift */; };
 		256559A0BA79DB67A5F112DF /* AwakeRule.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6D962D37511F2183E92CCE1 /* AwakeRule.swift */; };
 		2EB04A2C2ABE23F3867E00E5 /* AddAppSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7315A22E76682CC2DE13D550 /* AddAppSheet.swift */; };
+		31E61B472081A96644F2BD75 /* Awake.storekit in Resources */ = {isa = PBXBuildFile; fileRef = 1AA202FFE52BF38BAAB85480 /* Awake.storekit */; };
 		3AA067CEE94D6F0BBC023916 /* PopoverContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DEC27D3A59610496F7A854D0 /* PopoverContentView.swift */; };
 		3B85AABAD346EEE4A76B11B2 /* Constants.swift in Sources */ = {isa = PBXBuildFile; fileRef = 76789F11395BC23282A6C60F /* Constants.swift */; };
 		45115BFF4FA8A1375F775231 /* AIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A4C7DAA35CDE5DDBC87977C1 /* AIService.swift */; };
 		4BC795445EFE4093922705FD /* GlassCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 54B721ED2DB1F118F4BDB3EE /* GlassCard.swift */; };
+		5FB0536DCC68463FE81F023A /* PaywallView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FACFEB74C25DA1B981329380 /* PaywallView.swift */; };
 		86913D468B177C99E3BF10E5 /* PowerManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 748A5C96C30B84363CB4B95C /* PowerManager.swift */; };
 		8D2447A72201E2A8F6DE9523 /* RulesListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 901F3CDE13FE215E9DCF791D /* RulesListView.swift */; };
 		9094ED76657A3159A48E6BA8 /* RulesEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFF6EBAD6DFD1C4E3EF37E48 /* RulesEngine.swift */; };
@@ -40,6 +43,7 @@
 
 /* Begin PBXFileReference section */
 		07BB93F784043AAB36C8864A /* PersistenceService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersistenceService.swift; sourceTree = "<group>"; };
+		1AA202FFE52BF38BAAB85480 /* Awake.storekit */ = {isa = PBXFileReference; path = Awake.storekit; sourceTree = "<group>"; };
 		1E689EE7AB1AF9E865457431 /* HotkeyService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HotkeyService.swift; sourceTree = "<group>"; };
 		20483C3A6B15BC11D553161A /* AppWatchEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppWatchEntry.swift; sourceTree = "<group>"; };
 		215EFC2358F6EA9EA9281C28 /* KeychainService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainService.swift; sourceTree = "<group>"; };
@@ -60,6 +64,7 @@
 		B1DD3F561E35F80C84FC5FAA /* AwakeState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AwakeState.swift; sourceTree = "<group>"; };
 		B6D962D37511F2183E92CCE1 /* AwakeRule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AwakeRule.swift; sourceTree = "<group>"; };
 		B74FB2A549CEBCEFF40B2888 /* MenuBarViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarViewModel.swift; sourceTree = "<group>"; };
+		BBE746FD7C3E6FC95C0EB935 /* StoreKitService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoreKitService.swift; sourceTree = "<group>"; };
 		BD741196E6EFF017EE928A98 /* StatusSectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusSectionView.swift; sourceTree = "<group>"; };
 		BFF6EBAD6DFD1C4E3EF37E48 /* RulesEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RulesEngine.swift; sourceTree = "<group>"; };
 		C1F7175870746206A87BB270 /* AwakeApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AwakeApp.swift; sourceTree = "<group>"; };
@@ -70,6 +75,7 @@
 		F11DDFC8E440F8E37A886728 /* BatteryMonitorService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BatteryMonitorService.swift; sourceTree = "<group>"; };
 		F1EB67F68D84C9138B8CBFB5 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		F8CC8868E869400E93DE6C73 /* AIChatView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIChatView.swift; sourceTree = "<group>"; };
+		FACFEB74C25DA1B981329380 /* PaywallView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaywallView.swift; sourceTree = "<group>"; };
 		FAF4B0EFDE50D47E486E97CD /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -81,6 +87,7 @@
 				F8CC8868E869400E93DE6C73 /* AIChatView.swift */,
 				2F99BAA7CC7AE7BFE9EAC2DD /* APIKeySetupView.swift */,
 				E779480E82B3A91413D3A8A8 /* AppWatchListView.swift */,
+				FACFEB74C25DA1B981329380 /* PaywallView.swift */,
 				DEC27D3A59610496F7A854D0 /* PopoverContentView.swift */,
 				901F3CDE13FE215E9DCF791D /* RulesListView.swift */,
 				EA59AC679D8432B901CE0430 /* SettingsView.swift */,
@@ -119,6 +126,7 @@
 				748A5C96C30B84363CB4B95C /* PowerManager.swift */,
 				A4744D888C78E790B1500045 /* ProcessMonitorService.swift */,
 				BFF6EBAD6DFD1C4E3EF37E48 /* RulesEngine.swift */,
+				BBE746FD7C3E6FC95C0EB935 /* StoreKitService.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -157,6 +165,7 @@
 			children = (
 				FAF4B0EFDE50D47E486E97CD /* Assets.xcassets */,
 				7978475DE52CA36C07D35222 /* Awake.entitlements */,
+				1AA202FFE52BF38BAAB85480 /* Awake.storekit */,
 				C1F7175870746206A87BB270 /* AwakeApp.swift */,
 				F1EB67F68D84C9138B8CBFB5 /* Info.plist */,
 				B7D60BA218518F64BF2FCC9D /* Models */,
@@ -228,6 +237,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				FC30DDF95F663CDF99387742 /* Assets.xcassets in Resources */,
+				31E61B472081A96644F2BD75 /* Awake.storekit in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -258,6 +268,7 @@
 				0C213F612080E1E7E9F21279 /* LaunchAtLoginService.swift in Sources */,
 				0F6C1F45CDAD662A4EB4B5C7 /* MenuBarViewModel.swift in Sources */,
 				E2EEF996B71C2F3F5B5D5D49 /* NotificationService.swift in Sources */,
+				5FB0536DCC68463FE81F023A /* PaywallView.swift in Sources */,
 				107B2FDEF3287B172FA1F921 /* PersistenceService.swift in Sources */,
 				3AA067CEE94D6F0BBC023916 /* PopoverContentView.swift in Sources */,
 				86913D468B177C99E3BF10E5 /* PowerManager.swift in Sources */,
@@ -266,6 +277,7 @@
 				8D2447A72201E2A8F6DE9523 /* RulesListView.swift in Sources */,
 				9C5B6E21032355B0809F94EB /* SettingsView.swift in Sources */,
 				E8CBE17F44BCCB9C97BE888D /* StatusSectionView.swift in Sources */,
+				0902505A94A88D83A63B374E /* StoreKitService.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

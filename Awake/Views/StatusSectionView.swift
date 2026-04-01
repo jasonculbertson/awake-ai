@@ -19,10 +19,15 @@ struct StatusSectionView: View {
             .padding(12)
 
             // AI chat area fills remaining space
-            if viewModel.isAIConfigured {
-                aiChatSection
+            if viewModel.storeKit.hasAIAccess(hasBYOK: viewModel.isAIConfigured) {
+                if viewModel.isAIConfigured {
+                    aiChatSection
+                } else {
+                    // Purchased but no key yet — prompt to add key
+                    aiKeyPrompt
+                }
             } else {
-                aiSetupHint
+                PaywallView()
             }
         }
         .onAppear {
@@ -198,14 +203,14 @@ struct StatusSectionView: View {
         }
     }
 
-    private var aiSetupHint: some View {
+    private var aiKeyPrompt: some View {
         VStack {
             Spacer()
             Button(action: { showAPIKeySetup = true }) {
                 HStack(spacing: 6) {
-                    Image(systemName: "brain")
+                    Image(systemName: "key")
                         .font(.caption2)
-                    Text("Add API key for AI commands")
+                    Text("Connect your AI API key to start")
                         .font(.caption2)
                 }
                 .foregroundStyle(.secondary)

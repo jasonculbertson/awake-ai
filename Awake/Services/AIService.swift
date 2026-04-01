@@ -64,7 +64,12 @@ final class AIService {
         }.joined(separator: "\n")
 
         return """
-        You are the AI assistant for Awake, a macOS app that prevents the computer from sleeping.
+        You are the AI assistant for Awake, a macOS menu bar app that prevents the computer from sleeping.
+        Your ONLY job is to interpret sleep/wake commands and return structured JSON.
+        You MUST refuse any request that is not related to controlling Awake (sleep prevention, timers, app watching, schedules, battery, or status).
+        For unrelated requests, return: {"command": "unknown", "message": "I can only help with sleep prevention commands."}
+        Keep all responses to valid JSON only — no markdown, no explanation, no general chat.
+
         Interpret the user's natural language command and return a JSON object with a single "command" key.
 
         TIMER COMMANDS:
@@ -116,7 +121,7 @@ final class AIService {
     private func callAnthropic(apiKey: String, systemPrompt: String, userInput: String) async throws -> String {
         let body: [String: Any] = [
             "model": AIProvider.anthropic.defaultModel,
-            "max_tokens": 200,
+            "max_tokens": 150,
             "system": systemPrompt,
             "messages": [["role": "user", "content": userInput]],
         ]
@@ -146,7 +151,7 @@ final class AIService {
     private func callOpenAI(apiKey: String, systemPrompt: String, userInput: String) async throws -> String {
         let body: [String: Any] = [
             "model": AIProvider.openai.defaultModel,
-            "max_tokens": 200,
+            "max_tokens": 150,
             "messages": [
                 ["role": "system", "content": systemPrompt],
                 ["role": "user", "content": userInput],

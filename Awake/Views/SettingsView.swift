@@ -128,6 +128,78 @@ struct SettingsView: View {
 
                 Divider()
 
+                // Subscription
+                VStack(alignment: .leading, spacing: 8) {
+                    Label("AI Commands", systemImage: "wand.and.stars")
+                        .font(.caption.bold())
+
+                    if viewModel.storeKit.hasPurchased {
+                        HStack(spacing: 6) {
+                            Image(systemName: "checkmark.seal.fill")
+                                .foregroundStyle(.orange)
+                                .font(.caption)
+                            Text("AI Pro Active")
+                                .font(.caption)
+                                .foregroundStyle(.primary)
+                            Spacer()
+                        }
+                    } else {
+                        HStack(spacing: 6) {
+                            Text("Unlock AI commands to use natural language — \"stay awake for 2 hours\", \"keep on while Xcode runs\", and more.")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+
+                        if let yearly = viewModel.storeKit.yearlyProduct {
+                            Button(action: {
+                                Task { await viewModel.storeKit.purchase(yearly) }
+                            }) {
+                                HStack {
+                                    Text("Subscribe \(yearly.displayPrice)/year")
+                                        .font(.caption.bold())
+                                    Spacer()
+                                    Text("Best Value")
+                                        .font(.caption2.bold())
+                                        .foregroundStyle(.black)
+                                        .padding(.horizontal, 6)
+                                        .padding(.vertical, 2)
+                                        .background(.orange)
+                                        .clipShape(Capsule())
+                                }
+                                .frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .tint(.orange)
+                            .controlSize(.small)
+                            .disabled(viewModel.storeKit.isPurchasing)
+                        }
+
+                        if let monthly = viewModel.storeKit.monthlyProduct {
+                            Button(action: {
+                                Task { await viewModel.storeKit.purchase(monthly) }
+                            }) {
+                                Text("Subscribe \(monthly.displayPrice)/month")
+                                    .font(.caption)
+                                    .frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(.bordered)
+                            .controlSize(.small)
+                            .disabled(viewModel.storeKit.isPurchasing)
+                        }
+
+                        Button("Restore Purchases") {
+                            Task { await viewModel.storeKit.restorePurchases() }
+                        }
+                        .font(.caption2)
+                        .buttonStyle(.plain)
+                        .foregroundStyle(.secondary)
+                        .disabled(viewModel.storeKit.isPurchasing)
+                    }
+                }
+
+                Divider()
+
                 // AI Providers
                 VStack(alignment: .leading, spacing: 8) {
                     Label("AI Providers", systemImage: "key")

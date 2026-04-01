@@ -20,6 +20,7 @@ final class MenuBarViewModel: ObservableObject {
 
     let rulesEngine: RulesEngine
     let aiService: AIService
+    let storeKit = StoreKitService()
 
     private var cancellables = Set<AnyCancellable>()
     private var timerDisplayTimer: Timer?
