@@ -6,6 +6,7 @@ struct StatusSectionView: View {
     @State private var aiMessages: [ChatMessage] = []
     @State private var aiLoading = false
     @State private var showAPIKeySetup = false
+    @State private var showPaywall = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -31,6 +32,11 @@ struct StatusSectionView: View {
                     viewModel.refreshAIStatus()
                 }
             }
+        }
+        .sheet(isPresented: $showPaywall) {
+            PaywallView()
+                .environmentObject(viewModel)
+                .frame(width: 320)
         }
     }
 
@@ -157,17 +163,6 @@ struct StatusSectionView: View {
 
                     Spacer()
 
-                    // Show free request badge when using managed AI (no BYOK, no subscription)
-                    if !viewModel.isAIConfigured && !viewModel.storeKit.hasPurchased {
-                        Text("\(Constants.freeAIRequestLimit) free tries")
-                            .font(.caption2.bold())
-                            .foregroundStyle(.orange)
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
-                            .background(Color.orange.opacity(0.12))
-                            .clipShape(Capsule())
-                    }
-
                     if !aiMessages.isEmpty {
                         Button(action: { aiMessages.removeAll() }) {
                             Text("Clear")
@@ -245,13 +240,12 @@ struct StatusSectionView: View {
                 )
                 let result = viewModel.rulesEngine.applyCommand(command)
                 aiMessages.append(ChatMessage(role: .assistant, content: result))
-            } catch AIServiceError.freeRequestsExhausted {
-                // Show paywall by clearing the AI configured state
+            } catch AIServiceError.subscriptionRequired {
                 aiMessages.append(ChatMessage(
                     role: .system,
-                    content: "You've used your 3 free AI requests. Subscribe for unlimited, or add your own API key."
+                    content: "AI commands require an active subscription."
                 ))
-                viewModel.storeKit.hasPurchased = false // force paywall on next open
+                showPaywall = true
             } catch {
                 aiMessages.append(ChatMessage(role: .assistant, content: error.localizedDescription))
             }

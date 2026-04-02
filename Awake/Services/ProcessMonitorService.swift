@@ -20,10 +20,15 @@ final class ProcessMonitorService: ObservableObject {
     }
 
     func startMonitoring(interval: TimeInterval = Constants.processPollingInterval) {
+        // Guard against double-start: calling startMonitoring() while already monitoring
+        // would add a second orphaned timer to the RunLoop causing duplicate scans.
+        guard timer == nil else { return }
         scan()
-        timer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in
+        let t = Timer(timeInterval: interval, repeats: true) { [weak self] _ in
             self?.scan()
         }
+        RunLoop.main.add(t, forMode: .common)
+        timer = t
     }
 
     func stopMonitoring() {
@@ -32,19 +37,21 @@ final class ProcessMonitorService: ObservableObject {
     }
 
     private func scan() {
-        let allProcesses = getRunningProcesses()
-        let now = Date()
-
-        let found = allProcesses.filter { proc in
-            let matchesName = watchedProcessNames.contains { watched in
-                proc.name.lowercased().contains(watched.lowercased())
+        // Run sysctl on a background queue so the main thread isn't blocked
+        let watched = watchedProcessNames
+        DispatchQueue.global(qos: .utility).async { [weak self] in
+            guard let self else { return }
+            let allProcesses = self.getRunningProcesses()
+            let now = Date()
+            let found = allProcesses.filter { proc in
+                let matchesName = watched.contains { w in
+                    proc.name.lowercased().contains(w.lowercased())
+                }
+                return matchesName && now.timeIntervalSince(proc.startTime) >= Constants.processMinRuntime
             }
-            let runtime = now.timeIntervalSince(proc.startTime)
-            return matchesName && runtime >= Constants.processMinRuntime
-        }
-
-        DispatchQueue.main.async {
-            self.detectedProcesses = found
+            DispatchQueue.main.async {
+                self.detectedProcesses = found
+            }
         }
     }
 

@@ -18,9 +18,11 @@ final class LaunchAtLoginService: ObservableObject {
             } else {
                 try SMAppService.mainApp.register()
             }
-            isEnabled = SMAppService.mainApp.status == .enabled
         } catch {
             logger.error("Launch at login toggle failed: \(error.localizedDescription)")
         }
+        // Always sync from the real system state — even if the call threw, the
+        // OS may have partially succeeded or the pre-call state may have drifted.
+        isEnabled = SMAppService.mainApp.status == .enabled
     }
 }

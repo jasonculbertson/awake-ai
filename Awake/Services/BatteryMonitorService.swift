@@ -11,10 +11,13 @@ final class BatteryMonitorService: ObservableObject {
     private let logger = Logger(subsystem: Constants.appName, category: "BatteryMonitor")
 
     func startMonitoring(interval: TimeInterval = Constants.batteryPollingInterval) {
+        guard timer == nil else { return }
         refresh()
-        timer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in
+        let t = Timer(timeInterval: interval, repeats: true) { [weak self] _ in
             self?.refresh()
         }
+        RunLoop.main.add(t, forMode: .common)
+        timer = t
     }
 
     func stopMonitoring() {

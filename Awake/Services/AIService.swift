@@ -6,7 +6,7 @@ enum AIServiceError: Error, LocalizedError {
     case invalidResponse
     case apiError(String)
     case networkError(Error)
-    case freeRequestsExhausted(used: Int, limit: Int)
+    case subscriptionRequired
 
     var errorDescription: String? {
         switch self {
@@ -18,8 +18,8 @@ enum AIServiceError: Error, LocalizedError {
             return "API error: \(message)"
         case .networkError(let error):
             return "Network error: \(error.localizedDescription)"
-        case .freeRequestsExhausted:
-            return "You've used all 3 free AI requests. Subscribe for unlimited."
+        case .subscriptionRequired:
+            return "A subscription is required to use AI commands."
         }
     }
 }
@@ -79,18 +79,16 @@ final class AIService {
         let rules = currentRules.filter(\.isEnabled).map { "- \($0.label)" }
         let apps = watchList.filter(\.isEnabled).map { "- \($0.appName)" }
 
-        var payload: [String: Any] = [
+        guard let jws = transactionJWS else {
+            throw AIServiceError.subscriptionRequired
+        }
+
+        let payload: [String: Any] = [
             "command": userInput,
             "deviceId": Constants.deviceId,
+            "transactionJWS": jws,
             "context": ["rules": rules, "watchList": apps],
         ]
-        if let jws = transactionJWS {
-            payload["transactionJWS"] = jws
-        }
-        // Attach stored usage token so server can verify and increment count
-        if let token = UserDefaults.standard.string(forKey: "ai_usage_token") {
-            payload["usageToken"] = token
-        }
 
         var request = URLRequest(url: URL(string: Constants.managedAIEndpoint)!)
         request.httpMethod = "POST"
@@ -104,11 +102,8 @@ final class AIService {
             throw AIServiceError.invalidResponse
         }
 
-        // Hit free limit — show paywall
-        if let code = json["code"] as? String, code == "LIMIT_REACHED" {
-            let used = json["freeRequestsUsed"] as? Int ?? Constants.freeAIRequestLimit
-            let limit = json["freeLimit"] as? Int ?? Constants.freeAIRequestLimit
-            throw AIServiceError.freeRequestsExhausted(used: used, limit: limit)
+        if let code = json["code"] as? String, code == "SUBSCRIPTION_REQUIRED" {
+            throw AIServiceError.subscriptionRequired
         }
 
         if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode != 200 {
@@ -118,11 +113,6 @@ final class AIService {
 
         guard let result = json["result"] as? String else {
             throw AIServiceError.invalidResponse
-        }
-
-        // Persist the updated signed usage token returned by the server
-        if let newToken = json["usageToken"] as? String {
-            UserDefaults.standard.set(newToken, forKey: "ai_usage_token")
         }
 
         return parseCommand(result)

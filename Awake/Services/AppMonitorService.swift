@@ -15,6 +15,7 @@ final class AppMonitorService: ObservableObject {
     }
 
     func startMonitoring() {
+        guard cancellables.isEmpty else { return }
         let center = NSWorkspace.shared.notificationCenter
 
         center.publisher(for: NSWorkspace.didLaunchApplicationNotification)
