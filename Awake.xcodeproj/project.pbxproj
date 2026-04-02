@@ -43,7 +43,7 @@
 
 /* Begin PBXFileReference section */
 		07BB93F784043AAB36C8864A /* PersistenceService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersistenceService.swift; sourceTree = "<group>"; };
-		1AA202FFE52BF38BAAB85480 /* Awake.storekit */ = {isa = PBXFileReference; path = Awake.storekit; sourceTree = "<group>"; };
+		1AA202FFE52BF38BAAB85480 /* Awake.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; path = Awake.storekit; sourceTree = "<group>"; };
 		1E689EE7AB1AF9E865457431 /* HotkeyService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HotkeyService.swift; sourceTree = "<group>"; };
 		20483C3A6B15BC11D553161A /* AppWatchEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppWatchEntry.swift; sourceTree = "<group>"; };
 		215EFC2358F6EA9EA9281C28 /* KeychainService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainService.swift; sourceTree = "<group>"; };
@@ -292,6 +292,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 2WRVG46HV2;
 				ENABLE_HARDENED_RUNTIME = YES;
 				INFOPLIST_FILE = Awake/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -315,6 +316,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 2WRVG46HV2;
 				ENABLE_HARDENED_RUNTIME = YES;
 				INFOPLIST_FILE = Awake/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (

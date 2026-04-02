@@ -4,3 +4,4 @@ node_modules/
 xcuserdata/
 DerivedData/
 .DS_Store
+.vercel
