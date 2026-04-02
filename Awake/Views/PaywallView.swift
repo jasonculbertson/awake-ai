@@ -46,6 +46,7 @@ struct PaywallView: View {
                         title: "Annual",
                         price: yearly.displayPrice + "/year",
                         badge: "Best Value",
+                        trialDays: yearly.subscription?.introductoryOffer != nil ? 7 : nil,
                         product: yearly
                     )
                 }
@@ -56,6 +57,7 @@ struct PaywallView: View {
                         title: "Monthly",
                         price: monthly.displayPrice + "/month",
                         badge: nil,
+                        trialDays: monthly.subscription?.introductoryOffer != nil ? 7 : nil,
                         product: monthly
                     )
                 }
@@ -66,6 +68,7 @@ struct PaywallView: View {
                         title: "Lifetime",
                         price: pro.displayPrice + " once",
                         badge: nil,
+                        trialDays: nil,
                         product: pro
                     )
                 }
@@ -139,8 +142,9 @@ struct PaywallView: View {
         }
     }
 
-    private func planButton(plan: PlanOption, title: String, price: String, badge: String?, product: Product) -> some View {
+    private func planButton(plan: PlanOption, title: String, price: String, badge: String?, trialDays: Int?, product: Product) -> some View {
         let isSelected = selectedPlan == plan
+        let ctaLabel = trialDays != nil ? "Try Free for \(trialDays!)d" : "Subscribe"
         return Button(action: { selectedPlan = plan }) {
             HStack {
                 VStack(alignment: .leading, spacing: 1) {
@@ -157,7 +161,7 @@ struct PaywallView: View {
                                 .clipShape(Capsule())
                         }
                     }
-                    Text(price)
+                    Text(trialDays != nil ? "Free for 7 days, then \(price)" : price)
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 }
@@ -168,7 +172,7 @@ struct PaywallView: View {
                     ProgressView()
                         .controlSize(.small)
                 } else {
-                    Button("Subscribe") {
+                    Button(ctaLabel) {
                         Task { await viewModel.storeKit.purchase(product) }
                     }
                     .font(.caption.bold())

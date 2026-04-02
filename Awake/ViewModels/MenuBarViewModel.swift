@@ -60,12 +60,15 @@ final class MenuBarViewModel: ObservableObject {
 
         rulesEngine.startEvaluating()
 
-        // Update timer display every second
-        timerDisplayTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
+        // Update timer display every second.
+        // Use .common RunLoop mode so the countdown continues while menus or sheets are open.
+        let displayTimer = Timer(timeInterval: 1, repeats: true) { [weak self] _ in
             Task { @MainActor in
                 self?.timerRemaining = self?.rulesEngine.timerRemaining
             }
         }
+        RunLoop.main.add(displayTimer, forMode: .common)
+        timerDisplayTimer = displayTimer
     }
 
     private func setupBindings() {
@@ -75,6 +78,13 @@ final class MenuBarViewModel: ObservableObject {
                 self?.isAwake = state.isActive
                 self?.activeReasons = state.reasons
             }
+            .store(in: &cancellables)
+
+        // Forward battery monitor changes through viewModel so SettingsView
+        // and other views that access batteryMonitor properties stay up to date.
+        batteryMonitor.objectWillChange
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in self?.objectWillChange.send() }
             .store(in: &cancellables)
     }
 

@@ -44,12 +44,17 @@ final class RulesEngine: ObservableObject {
     }
 
     func startEvaluating(interval: TimeInterval = Constants.evaluationInterval) {
+        guard evaluationTimer == nil else { return }
         evaluate()
-        evaluationTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in
+        // Use .common RunLoop mode so the timer fires even during event tracking
+        // (e.g. while a menu or sheet is open), preventing evaluation gaps.
+        let timer = Timer(timeInterval: interval, repeats: true) { [weak self] _ in
             Task { @MainActor in
                 self?.evaluate()
             }
         }
+        RunLoop.main.add(timer, forMode: .common)
+        evaluationTimer = timer
     }
 
     func stopEvaluating() {
@@ -161,13 +166,12 @@ final class RulesEngine: ObservableObject {
             return command.responseDescription
 
         case .setDelayedTimer(let delay, let duration):
-            // Schedule a timer to start after delay
+            // Use Timer on .common RunLoop (not asyncAfter, which drifts under App Nap)
             let delaySeconds = TimeInterval(delay * 60)
-            DispatchQueue.main.asyncAfter(deadline: .now() + delaySeconds) { [weak self] in
-                Task { @MainActor in
-                    self?.startTimer(minutes: duration)
-                }
+            let t = Timer(timeInterval: delaySeconds, repeats: false) { [weak self] _ in
+                Task { @MainActor in self?.startTimer(minutes: duration) }
             }
+            RunLoop.main.add(t, forMode: .common)
             return command.responseDescription
 
         case .awakeUntil(let hour, let minute):
@@ -209,12 +213,11 @@ final class RulesEngine: ObservableObject {
             }
 
             let delay = targetDate.timeIntervalSinceNow
-            DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
-                Task { @MainActor in
-                    let duration = durationMinutes ?? 60 // Default 1 hour if not specified
-                    self?.startTimer(minutes: duration)
-                }
+            let duration = durationMinutes ?? 60
+            let t = Timer(timeInterval: delay, repeats: false) { [weak self] _ in
+                Task { @MainActor in self?.startTimer(minutes: duration) }
             }
+            RunLoop.main.add(t, forMode: .common)
             return command.responseDescription
 
         case .watchApp(let name, let mode):
@@ -268,7 +271,8 @@ final class RulesEngine: ObservableObject {
             return command.responseDescription
 
         case .sleepAt(let hour, let minute):
-            // "sleep at midnight" = stay awake until that time, then allow sleep
+            // Stay awake until that time via a timer only — no manual rule,
+            // so sleep is allowed naturally when the timer expires.
             let calendar = Calendar.current
             var components = calendar.dateComponents([.year, .month, .day], from: Date())
             components.hour = hour
@@ -282,8 +286,6 @@ final class RulesEngine: ObservableObject {
             }
             let remaining = Int(targetDate.timeIntervalSinceNow / 60)
             if remaining > 0 {
-                // Turn on now, set timer to expire at the target time
-                if !isManuallyActive { toggleManual() }
                 startTimer(minutes: remaining)
             }
             return command.responseDescription
@@ -299,8 +301,8 @@ final class RulesEngine: ObservableObject {
             }
             persistence.saveWatchList(watchList)
             evaluate()
-            // Re-enable after pause
-            DispatchQueue.main.asyncAfter(deadline: .now() + TimeInterval(mins * 60)) { [weak self] in
+            // Re-enable after pause (use Timer on .common, not asyncAfter — more reliable under App Nap)
+            let resumeTimer = Timer(timeInterval: TimeInterval(mins * 60), repeats: false) { [weak self] _ in
                 Task { @MainActor in
                     guard let self else { return }
                     if savedManual { self.toggleManual() }
@@ -311,6 +313,7 @@ final class RulesEngine: ObservableObject {
                     self.evaluate()
                 }
             }
+            RunLoop.main.add(resumeTimer, forMode: .common)
             return command.responseDescription
 
         case .watchProcess(let processName):
@@ -506,7 +509,14 @@ final class RulesEngine: ObservableObject {
 
         // Apply sleep prevention mode from settings
         powerManager.mode = persistence.sleepPreventionMode
-        _ = powerManager.preventSleep(reason: reasonText)
+        let asserted = powerManager.preventSleep(reason: reasonText)
+
+        if !asserted {
+            // IOPMAssertion failed — don't claim we're keeping the Mac awake
+            logger.error("preventSleep failed — deactivating to avoid false 'awake' state")
+            deactivate()
+            return
+        }
 
         // Notify on state change (was inactive, now active)
         let reasonDescriptions = reasons.map(\.description)
@@ -570,6 +580,13 @@ final class RulesEngine: ObservableObject {
             .store(in: &cancellables)
 
         appMonitor.$frontmostBundleID
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in self?.evaluate() }
+            .store(in: &cancellables)
+
+        // Re-evaluate immediately when process detection results change so that
+        // sleep prevention activates/deactivates without waiting for the 5s timer tick.
+        processMonitor.$detectedProcesses
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in self?.evaluate() }
             .store(in: &cancellables)

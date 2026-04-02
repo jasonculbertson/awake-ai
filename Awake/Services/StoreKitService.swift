@@ -37,6 +37,7 @@ final class StoreKitService: ObservableObject {
     func loadProducts() async {
         do {
             let products = try await Product.products(for: [
+                Self.proProductID,
                 Self.monthlyProductID,
                 Self.yearlyProductID,
             ])
@@ -63,12 +64,15 @@ final class StoreKitService: ObservableObject {
             let result = try await product.purchase()
             switch result {
             case .success(let verification):
-                guard case .verified(let transaction) = verification else {
+                // Always finish the transaction — even unverified ones must be
+                // finished to prevent StoreKit from redelivering them indefinitely.
+                if case .verified(let transaction) = verification {
+                    await transaction.finish()
+                    await updatePurchaseStatus()
+                } else if case .unverified(let transaction, _) = verification {
+                    await transaction.finish()
                     purchaseError = "Purchase could not be verified."
-                    break
                 }
-                await transaction.finish()
-                await updatePurchaseStatus()
             case .userCancelled:
                 break
             case .pending:
@@ -100,14 +104,19 @@ final class StoreKitService: ObservableObject {
     func updatePurchaseStatus() async {
         var purchased = false
         var jwsToken: String?
+        var latestPurchaseDate: Date?
+
         for await result in Transaction.currentEntitlements {
             guard case .verified(let transaction) = result else { continue }
             guard transaction.revocationDate == nil else { continue }
             switch transaction.productID {
             case Self.proProductID, Self.monthlyProductID, Self.yearlyProductID:
                 purchased = true
-                if case .verified = result {
-                    // jwsRepresentation is on VerificationResult, capture via the outer result
+                // Keep the JWS for the most recently purchased entitlement —
+                // guarding against the unlikely case of multiple active subscriptions
+                // where a simple last-write-wins would pick the wrong token.
+                if latestPurchaseDate == nil || transaction.purchaseDate > latestPurchaseDate! {
+                    latestPurchaseDate = transaction.purchaseDate
                     jwsToken = result.jwsRepresentation
                 }
             default:

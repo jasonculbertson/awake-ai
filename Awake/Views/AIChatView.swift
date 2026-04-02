@@ -2,21 +2,6 @@ import SwiftUI
 
 struct AIChatView: View {
     @EnvironmentObject var viewModel: MenuBarViewModel
-    @StateObject private var chatVM: AIChatViewModel
-
-    init() {
-        // Placeholder - will be replaced in onAppear
-        _chatVM = StateObject(wrappedValue: AIChatViewModel(
-            aiService: AIService(keychainService: KeychainService()),
-            rulesEngine: RulesEngine(
-                powerManager: PowerManager(),
-                appMonitor: AppMonitorService(),
-                processMonitor: ProcessMonitorService(),
-                batteryMonitor: BatteryMonitorService(),
-                persistence: PersistenceService()
-            )
-        ))
-    }
 
     var body: some View {
         AIChatInnerView()
@@ -31,6 +16,7 @@ struct AIChatInnerView: View {
     @State private var isLoading = false
     @State private var messages: [ChatMessage] = []
     @State private var showAPIKeySetup = false
+    @State private var showPaywall = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -55,6 +41,11 @@ struct AIChatInnerView: View {
                 showAPIKeySetup = false
                 openAPIKeyWindow(keychainService: viewModel.keychainService)
             }
+        }
+        .sheet(isPresented: $showPaywall) {
+            PaywallView()
+                .environmentObject(viewModel)
+                .frame(width: 320)
         }
     }
 
@@ -140,10 +131,17 @@ struct AIChatInnerView: View {
                 let command = try await viewModel.aiService.interpretCommand(
                     text,
                     currentRules: viewModel.rulesEngine.rules,
-                    watchList: viewModel.rulesEngine.watchList
+                    watchList: viewModel.rulesEngine.watchList,
+                    transactionJWS: viewModel.storeKit.latestTransactionJWS
                 )
                 let result = viewModel.rulesEngine.applyCommand(command)
                 messages.append(ChatMessage(role: .assistant, content: result))
+            } catch AIServiceError.subscriptionRequired {
+                messages.append(ChatMessage(
+                    role: .system,
+                    content: "AI commands require an active subscription."
+                ))
+                showPaywall = true
             } catch {
                 messages.append(ChatMessage(role: .assistant, content: error.localizedDescription))
             }

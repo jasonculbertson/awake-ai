@@ -47,9 +47,14 @@ final class NotificationService: NSObject, UNUserNotificationCenterDelegate {
             trigger: nil
         )
 
-        UNUserNotificationCenter.current().add(request) { error in
+        // Remove the outgoing opposite notification so we never show both
+        // "Awake" and "Asleep" banners simultaneously after a rapid transition.
+        let oppositeID = id == "awake-activated" ? "awake-deactivated" : "awake-activated"
+        UNUserNotificationCenter.current().removeDeliveredNotifications(withIdentifiers: [oppositeID])
+
+        UNUserNotificationCenter.current().add(request) { [weak self] error in
             if let error {
-                self.logger.warning("Notification delivery failed: \(error.localizedDescription)")
+                self?.logger.warning("Notification delivery failed: \(error.localizedDescription)")
             }
         }
     }
