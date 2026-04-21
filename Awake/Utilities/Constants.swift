@@ -18,7 +18,7 @@ enum AIProvider: String, Codable, CaseIterable, Identifiable {
     var defaultModel: String {
         switch self {
         case .anthropic: return "claude-haiku-4-5"
-        case .openai: return "gpt-4o-mini"
+        case .openai: return "gpt-4.1-nano"
         case .gemini: return "gemini-1.5-flash"
         }
     }
