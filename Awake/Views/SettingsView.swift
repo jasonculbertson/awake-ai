@@ -362,7 +362,7 @@ struct SettingsView: View {
     private func sectionHeader(_ title: String) -> some View {
         Text(title.uppercased())
             .font(.system(size: 10, weight: .semibold))
-            .foregroundStyle(.white.opacity(0.6))
+            .foregroundStyle(Color(nsColor: .secondaryLabelColor))
             .tracking(0.5)
             .padding(.top, 14)
             .padding(.bottom, 4)
@@ -393,11 +393,11 @@ struct SettingsView: View {
     private func iconBadge(_ name: String, color: Color) -> some View {
         ZStack {
             RoundedRectangle(cornerRadius: 5)
-                .fill(color.opacity(0.15))
+                .fill(color.opacity(0.9))
                 .frame(width: 22, height: 22)
             Image(systemName: name)
-                .font(.system(size: 11, weight: .medium))
-                .foregroundStyle(color)
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(.white)
         }
     }
 
