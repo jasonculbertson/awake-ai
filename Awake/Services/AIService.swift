@@ -107,8 +107,17 @@ final class AIService {
         }
 
         if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode != 200 {
-            let msg = json["error"] as? String ?? "HTTP \(httpResponse.statusCode)"
-            throw AIServiceError.apiError(msg)
+            switch httpResponse.statusCode {
+            case 429:
+                throw AIServiceError.apiError("Too many requests. Wait a moment and try again.")
+            case 401, 403:
+                throw AIServiceError.apiError("Subscription not valid. Check your purchase in Settings.")
+            case 500, 502, 503:
+                throw AIServiceError.apiError("AI service temporarily unavailable. Try again in a moment.")
+            default:
+                let msg = json["error"] as? String ?? "Something went wrong. Please try again."
+                throw AIServiceError.apiError(msg)
+            }
         }
 
         guard let result = json["result"] as? String else {
@@ -289,6 +298,18 @@ final class AIService {
             throw AIServiceError.invalidResponse
         }
         if httpResponse.statusCode != 200 {
+            // Friendly messages for common HTTP errors
+            switch httpResponse.statusCode {
+            case 429:
+                throw AIServiceError.apiError("You've hit the rate limit for your API key. Wait a moment and try again.")
+            case 401, 403:
+                throw AIServiceError.apiError("Invalid API key. Check your key in Settings.")
+            case 500, 502, 503:
+                throw AIServiceError.apiError("The AI service is temporarily unavailable. Try again in a moment.")
+            default:
+                break
+            }
+
             if let errorBody = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
                 // Try common error formats
                 if let errorInfo = errorBody["error"] as? [String: Any],
@@ -299,7 +320,7 @@ final class AIService {
                     throw AIServiceError.apiError(message)
                 }
             }
-            throw AIServiceError.apiError("HTTP \(httpResponse.statusCode)")
+            throw AIServiceError.apiError("Something went wrong. Please try again.")
         }
     }
 
