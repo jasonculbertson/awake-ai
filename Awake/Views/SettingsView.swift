@@ -402,18 +402,19 @@ struct SettingsView: View {
         subtitle: String? = nil,
         isOn: Binding<Bool>
     ) -> some View {
-        Toggle(isOn: isOn) {
-            HStack(spacing: 8) {
-                iconBadge(icon, color: color)
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(title).font(.caption.bold())
-                    if let sub = subtitle {
-                        Text(sub).font(.caption2).foregroundStyle(.secondary)
-                    }
+        HStack(spacing: 8) {
+            iconBadge(icon, color: color)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(title).font(.caption.bold())
+                if let sub = subtitle {
+                    Text(sub).font(.caption2).foregroundStyle(.secondary)
                 }
             }
+            Spacer()
+            Toggle("", isOn: isOn)
+                .toggleStyle(.switch)
+                .controlSize(.mini)
+                .labelsHidden()
         }
-        .toggleStyle(.switch)
-        .controlSize(.mini)
     }
 }
