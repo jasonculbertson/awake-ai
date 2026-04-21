@@ -362,7 +362,7 @@ struct SettingsView: View {
     private func sectionHeader(_ title: String) -> some View {
         Text(title.uppercased())
             .font(.system(size: 10, weight: .semibold))
-            .foregroundStyle(.secondary)
+            .foregroundStyle(.white.opacity(0.6))
             .tracking(0.5)
             .padding(.top, 14)
             .padding(.bottom, 4)
@@ -375,11 +375,10 @@ struct SettingsView: View {
         }
         .padding(10)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(nsColor: .controlBackgroundColor).opacity(0.6))
-        .clipShape(RoundedRectangle(cornerRadius: 9))
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 9))
         .overlay(
             RoundedRectangle(cornerRadius: 9)
-                .strokeBorder(Color(nsColor: .separatorColor).opacity(0.3), lineWidth: 1)
+                .strokeBorder(Color.white.opacity(0.15), lineWidth: 1)
         )
     }
 
