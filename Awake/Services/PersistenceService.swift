@@ -65,12 +65,24 @@ final class PersistenceService {
     }
 
     func defaultWatchList() -> [AppWatchEntry] {
-        Constants.defaultWatchedApps.map { bundleID, name in
-            AppWatchEntry(
+        // Apps that benefit from auto-deactivate when idle (engineers walk away from these)
+        let activityAware: Set<String> = [
+            "com.anthropic.claudefordesktop",   // Claude — long AI tasks
+            "com.apple.dt.Xcode",               // Xcode — builds
+            "com.todesktop.230313mzl4w4u92",    // Cursor — AI-assisted builds
+            "com.microsoft.VSCode",             // VS Code — builds / dev servers
+        ]
+
+        return Constants.defaultWatchedApps.map { bundleID, name in
+            let idle = activityAware.contains(bundleID)
+            return AppWatchEntry(
                 bundleIdentifier: bundleID,
                 appName: name,
                 mode: .whenRunning,
-                isEnabled: false
+                isEnabled: false,
+                watchChildProcesses: false,
+                cpuThreshold: idle ? 8.0 : nil,   // 8 % CPU = idle
+                cpuIdleMinutes: 3                  // 3 min of low CPU → deactivate
             )
         }
     }
