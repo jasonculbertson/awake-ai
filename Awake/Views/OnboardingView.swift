@@ -4,64 +4,115 @@ struct OnboardingView: View {
     @EnvironmentObject var viewModel: MenuBarViewModel
     @State private var currentStep = 0
     @State private var showAPIKeySetup = false
+    @State private var goingForward = true
 
     private let totalSteps = 3
 
     var body: some View {
-        VStack(spacing: 0) {
-            // Header with step indicator
-            HStack(spacing: 6) {
-                ForEach(0..<totalSteps, id: \.self) { i in
-                    Capsule()
-                        .fill(i <= currentStep ? Color.orange : Color(nsColor: .separatorColor))
-                        .frame(width: i == currentStep ? 20 : 6, height: 6)
-                        .animation(.spring(response: 0.3), value: currentStep)
-                }
-            }
-            .padding(.top, 24)
+        ZStack {
+            // Full background
+            Color(nsColor: .windowBackgroundColor)
+                .ignoresSafeArea()
 
-            // Step content
-            TabView(selection: $currentStep) {
-                stepOne.tag(0)
-                stepTwo.tag(1)
-                stepThree.tag(2)
-            }
-            .tabViewStyle(.automatic)
-            .frame(height: 340)
+            VStack(spacing: 0) {
+                // ── Header band ──────────────────────────────────────
+                ZStack {
+                    // Gradient header
+                    LinearGradient(
+                        colors: [Color.orange.opacity(0.18), Color.orange.opacity(0.04)],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                    .ignoresSafeArea(edges: .top)
 
-            // Navigation buttons
-            HStack(spacing: 12) {
-                if currentStep > 0 {
-                    Button("Back") {
-                        withAnimation { currentStep -= 1 }
+                    // Step content
+                    ZStack {
+                        if currentStep == 0 { headerContent(for: 0).transition(forwardTransition) }
+                        if currentStep == 1 { headerContent(for: 1).transition(forwardTransition) }
+                        if currentStep == 2 { headerContent(for: 2).transition(forwardTransition) }
                     }
-                    .buttonStyle(.bordered)
-                    .controlSize(.regular)
+                    .animation(.spring(response: 0.38, dampingFraction: 0.82), value: currentStep)
+                    .padding(.top, 36)
+                    .padding(.bottom, 24)
+                    .padding(.horizontal, 32)
                 }
 
-                Spacer()
+                Divider()
+                    .opacity(0.5)
 
-                if currentStep < totalSteps - 1 {
-                    Button("Next") {
-                        withAnimation { currentStep += 1 }
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .tint(.orange)
-                    .controlSize(.regular)
-                } else {
-                    Button("Get Started") {
-                        viewModel.completeOnboarding()
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .tint(.orange)
-                    .controlSize(.regular)
+                // ── Body content ─────────────────────────────────────
+                ZStack {
+                    if currentStep == 0 { bodyContent(for: 0).transition(forwardTransition) }
+                    if currentStep == 1 { bodyContent(for: 1).transition(forwardTransition) }
+                    if currentStep == 2 { bodyContent(for: 2).transition(forwardTransition) }
                 }
+                .animation(.spring(response: 0.38, dampingFraction: 0.82), value: currentStep)
+                .frame(maxHeight: .infinity)
+                .padding(.horizontal, 24)
+                .padding(.vertical, 16)
+
+                Divider()
+                    .opacity(0.4)
+
+                // ── Footer navigation ─────────────────────────────────
+                HStack {
+                    // Back
+                    Button(action: goBack) {
+                        Label("Back", systemImage: "chevron.left")
+                            .font(.system(size: 13, weight: .medium))
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.secondary)
+                    .opacity(currentStep > 0 ? 1 : 0)
+                    .disabled(currentStep == 0)
+
+                    Spacer()
+
+                    // Dots
+                    HStack(spacing: 7) {
+                        ForEach(0..<totalSteps, id: \.self) { i in
+                            Circle()
+                                .fill(i == currentStep ? Color.orange : Color(nsColor: .separatorColor))
+                                .frame(width: i == currentStep ? 8 : 6, height: i == currentStep ? 8 : 6)
+                                .animation(.spring(response: 0.3), value: currentStep)
+                        }
+                    }
+
+                    Spacer()
+
+                    // Next / Get Started
+                    if currentStep < totalSteps - 1 {
+                        Button(action: goNext) {
+                            HStack(spacing: 4) {
+                                Text("Next")
+                                Image(systemName: "chevron.right")
+                            }
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 7)
+                            .background(Color.orange)
+                            .clipShape(Capsule())
+                        }
+                        .buttonStyle(.plain)
+                    } else {
+                        Button(action: { viewModel.completeOnboarding() }) {
+                            Text("Get Started")
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundStyle(.white)
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 7)
+                                .background(Color.orange)
+                                .clipShape(Capsule())
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(.horizontal, 28)
+                .padding(.vertical, 14)
             }
-            .padding(.horizontal, 28)
-            .padding(.bottom, 24)
         }
-        .frame(width: 380)
-        .background(.ultraThinMaterial)
+        .frame(width: 400, height: 520)
         .onChange(of: showAPIKeySetup) {
             if showAPIKeySetup {
                 showAPIKeySetup = false
@@ -72,171 +123,188 @@ struct OnboardingView: View {
         }
     }
 
-    // MARK: - Step 1: What Awake does
+    // MARK: - Navigation
 
-    private var stepOne: some View {
-        VStack(spacing: 20) {
-            Image(systemName: "sun.max.fill")
-                .font(.system(size: 56))
-                .foregroundStyle(.orange)
-                .symbolEffect(.pulse)
+    private func goNext() {
+        goingForward = true
+        withAnimation(.spring(response: 0.38, dampingFraction: 0.82)) { currentStep += 1 }
+    }
 
-            VStack(spacing: 6) {
-                Text("Welcome to Awake AI")
-                    .font(.title2.bold())
+    private func goBack() {
+        goingForward = false
+        withAnimation(.spring(response: 0.38, dampingFraction: 0.82)) { currentStep -= 1 }
+    }
 
-                Text("Your Mac, always on when you need it.")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
+    private var forwardTransition: AnyTransition {
+        .asymmetric(
+            insertion: .move(edge: goingForward ? .trailing : .leading).combined(with: .opacity),
+            removal:   .move(edge: goingForward ? .leading  : .trailing).combined(with: .opacity)
+        )
+    }
+
+    // MARK: - Header content per step
+
+    @ViewBuilder
+    private func headerContent(for step: Int) -> some View {
+        switch step {
+        case 0:
+            VStack(spacing: 10) {
+                Image(systemName: "sun.max.fill")
+                    .font(.system(size: 48, weight: .medium))
+                    .foregroundStyle(.orange)
+                    .symbolEffect(.pulse)
+                VStack(spacing: 4) {
+                    Text("Welcome to Awake AI")
+                        .font(.title2.bold())
+                    Text("Your Mac, always on when you need it.")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                }
             }
-
-            VStack(alignment: .leading, spacing: 12) {
-                featureRow(icon: "wand.and.stars", color: .orange,
-                           title: "AI-powered commands",
-                           detail: "Just type what you need in plain English")
-                featureRow(icon: "app.badge.checkmark", color: .blue,
-                           title: "Smart app detection",
-                           detail: "Stays on while Xcode, Docker, or any app runs")
-                featureRow(icon: "terminal", color: .green,
-                           title: "Process awareness",
-                           detail: "Knows when your build finishes and turns itself off")
-                featureRow(icon: "battery.50", color: .yellow,
-                           title: "Battery-smart",
-                           detail: "Automatically steps back when battery is low")
+        case 1:
+            VStack(spacing: 10) {
+                Image(systemName: "wand.and.stars")
+                    .font(.system(size: 48, weight: .medium))
+                    .foregroundStyle(.orange)
+                VStack(spacing: 4) {
+                    Text("AI Commands")
+                        .font(.title2.bold())
+                    Text("Use plain English to control Awake — free with your own API key.")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                }
             }
-            .padding(.horizontal, 28)
+        default:
+            VStack(spacing: 10) {
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.system(size: 48, weight: .medium))
+                    .foregroundStyle(.green)
+                    .symbolEffect(.bounce, value: currentStep)
+                VStack(spacing: 4) {
+                    Text("You're all set!")
+                        .font(.title2.bold())
+                    Text("Awake lives in your menu bar, ready whenever you need it.")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                }
+            }
         }
     }
 
-    // MARK: - Step 2: Set up AI
+    // MARK: - Body content per step
 
-    private var stepTwo: some View {
-        VStack(spacing: 20) {
-            Image(systemName: "key.fill")
-                .font(.system(size: 56))
-                .foregroundStyle(.orange)
-
-            VStack(spacing: 6) {
-                Text("AI Commands (Optional)")
-                    .font(.title2.bold())
-
-                Text("Connect your own API key to use natural language commands — free, forever.")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 8)
+    @ViewBuilder
+    private func bodyContent(for step: Int) -> some View {
+        switch step {
+        case 0:
+            VStack(spacing: 8) {
+                featureRow(icon: "wand.and.stars",      color: .orange, title: "AI-powered commands",  detail: "Just type what you need in plain English")
+                featureRow(icon: "app.badge.checkmark", color: .blue,   title: "Smart app detection",  detail: "Stays on while Xcode, Docker, or any app runs")
+                featureRow(icon: "terminal",            color: .green,  title: "Process awareness",    detail: "Knows when your build finishes and turns itself off")
+                featureRow(icon: "battery.50",          color: .yellow, title: "Battery-smart",        detail: "Automatically steps back when battery is low")
             }
-
+        case 1:
             VStack(spacing: 10) {
-                exampleCommand("Stay awake for 2 hours")
-                exampleCommand("Keep on while Xcode is running")
-                exampleCommand("Don't sleep while Docker runs")
-                exampleCommand("Stay awake until 11pm")
-            }
-            .padding(.horizontal, 28)
+                VStack(spacing: 6) {
+                    exampleCommand("Stay awake for 2 hours")
+                    exampleCommand("Keep on while Xcode is running")
+                    exampleCommand("Don't sleep while Docker runs")
+                    exampleCommand("Stay awake until 11pm")
+                }
 
-            if viewModel.isAIConfigured {
-                HStack(spacing: 6) {
-                    Image(systemName: "checkmark.circle.fill")
-                        .foregroundStyle(.green)
-                    Text("API key connected")
+                if viewModel.isAIConfigured {
+                    Label("API key connected", systemImage: "checkmark.circle.fill")
                         .font(.caption.bold())
                         .foregroundStyle(.green)
-                }
-            } else {
-                Button(action: { showAPIKeySetup = true }) {
-                    HStack(spacing: 6) {
-                        Image(systemName: "key")
-                        Text("Connect API Key")
+                        .padding(.top, 4)
+                } else {
+                    Button(action: { showAPIKeySetup = true }) {
+                        Label("Connect API Key", systemImage: "key")
+                            .font(.caption.bold())
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 8)
                     }
-                    .frame(maxWidth: .infinity)
+                    .buttonStyle(.borderedProminent)
+                    .tint(.orange)
+                    .controlSize(.regular)
+                    .padding(.top, 4)
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(.orange)
-                .padding(.horizontal, 28)
-            }
 
-            Text("Works with Anthropic, OpenAI, and Google AI. Or skip and use the subscription.")
-                .font(.caption2)
-                .foregroundStyle(.tertiary)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 28)
-        }
-    }
-
-    // MARK: - Step 3: You're set
-
-    private var stepThree: some View {
-        VStack(spacing: 20) {
-            Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: 56))
-                .foregroundStyle(.green)
-                .symbolEffect(.bounce, value: currentStep)
-
-            VStack(spacing: 6) {
-                Text("You're all set!")
-                    .font(.title2.bold())
-
-                Text("Awake lives in your menu bar. Click the sun icon to get started.")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                Text("Works with Anthropic, OpenAI, and Google AI.\nOr skip and unlock with a subscription later.")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
                     .multilineTextAlignment(.center)
-                    .padding(.horizontal, 8)
             }
-
-            VStack(alignment: .leading, spacing: 12) {
-                tipRow(icon: "sun.max.fill", tip: "Click the ☀️ icon in your menu bar to open Awake")
-                tipRow(icon: "keyboard", tip: "Press ⌘⇧A anywhere to instantly toggle")
-                tipRow(icon: "arrow.right.circle", tip: "Right-click the icon for quick timer presets")
-                tipRow(icon: "bell", tip: "You'll get a notification when Awake activates or deactivates")
+        default:
+            VStack(spacing: 8) {
+                tipRow(icon: "cursorarrow.click",         tip: "Click the ☀️ icon in the menu bar to open Awake")
+                tipRow(icon: "keyboard",                  tip: "Press ⌘⇧A anywhere to instantly toggle")
+                tipRow(icon: "contextualmenu.and.cursorarrow", tip: "Right-click the icon for quick timer presets")
+                tipRow(icon: "bell",                      tip: "Get a notification when Awake activates or deactivates")
             }
-            .padding(.horizontal, 28)
         }
     }
 
-    // MARK: - Helpers
+    // MARK: - Reusable rows
 
     private func featureRow(icon: String, color: Color, title: String, detail: String) -> some View {
-        HStack(alignment: .top, spacing: 12) {
-            Image(systemName: icon)
-                .font(.body)
-                .foregroundStyle(color)
-                .frame(width: 24)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title).font(.caption.bold())
-                Text(detail).font(.caption2).foregroundStyle(.secondary)
+        HStack(alignment: .center, spacing: 14) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(color.opacity(0.12))
+                    .frame(width: 34, height: 34)
+                Image(systemName: icon)
+                    .font(.system(size: 15, weight: .medium))
+                    .foregroundStyle(color)
+            }
+            VStack(alignment: .leading, spacing: 1) {
+                Text(title).font(.system(size: 13, weight: .semibold))
+                Text(detail).font(.caption).foregroundStyle(.secondary)
             }
             Spacer()
         }
+        .padding(.horizontal, 4)
+    }
+
+    private func tipRow(icon: String, tip: String) -> some View {
+        HStack(alignment: .center, spacing: 14) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(Color.orange.opacity(0.1))
+                    .frame(width: 34, height: 34)
+                Image(systemName: icon)
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(.orange)
+            }
+            Text(tip)
+                .font(.system(size: 13))
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer()
+        }
+        .padding(.horizontal, 4)
     }
 
     private func exampleCommand(_ text: String) -> some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 10) {
             Image(systemName: "quote.opening")
                 .font(.caption2)
                 .foregroundStyle(.orange)
             Text(text)
-                .font(.caption)
+                .font(.system(size: 12))
                 .foregroundStyle(.primary)
             Spacer()
         }
         .padding(.horizontal, 12)
-        .padding(.vertical, 7)
-        .background(Color(nsColor: .controlBackgroundColor).opacity(0.6))
-        .clipShape(RoundedRectangle(cornerRadius: 7))
-    }
-
-    private func tipRow(icon: String, tip: String) -> some View {
-        HStack(alignment: .top, spacing: 12) {
-            Image(systemName: icon)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .frame(width: 18)
-            Text(tip)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            Spacer()
-        }
+        .padding(.vertical, 8)
+        .background(Color(nsColor: .controlBackgroundColor).opacity(0.7))
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .strokeBorder(Color(nsColor: .separatorColor).opacity(0.4), lineWidth: 1)
+        )
     }
 }

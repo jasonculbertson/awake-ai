@@ -211,8 +211,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             rootView: OnboardingView().environmentObject(viewModel)
         )
         let window = NSWindow(contentViewController: vc)
-        window.title = "Welcome to Awake"
-        window.styleMask = [.titled, .closable]
+        window.title = ""
+        window.styleMask = [.titled, .closable, .fullSizeContentView]
+        window.titlebarAppearsTransparent = true
         window.isReleasedWhenClosed = false
         window.center()
         window.makeKeyAndOrderFront(nil)
