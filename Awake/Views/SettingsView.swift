@@ -375,10 +375,14 @@ struct SettingsView: View {
         }
         .padding(10)
         .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 9)
+                .fill(Color.white.opacity(0.18))
+        )
         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 9))
         .overlay(
             RoundedRectangle(cornerRadius: 9)
-                .strokeBorder(Color.white.opacity(0.15), lineWidth: 1)
+                .strokeBorder(Color.white.opacity(0.25), lineWidth: 1)
         )
     }
 
