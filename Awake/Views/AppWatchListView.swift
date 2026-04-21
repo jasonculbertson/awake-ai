@@ -6,56 +6,63 @@ struct AppWatchListView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            List {
-                ForEach(viewModel.rulesEngine.watchList) { entry in
-                    AppWatchRow(entry: entry) { updated in
-                        var list = viewModel.rulesEngine.watchList
-                        if let idx = list.firstIndex(where: { $0.id == entry.id }) {
-                            list[idx] = updated
-                            viewModel.rulesEngine.updateWatchList(list)
+            ScrollView {
+                VStack(spacing: 0) {
+                    ForEach(viewModel.rulesEngine.watchList) { entry in
+                        AppWatchRow(entry: entry) { updated in
+                            var list = viewModel.rulesEngine.watchList
+                            if let idx = list.firstIndex(where: { $0.id == entry.id }) {
+                                list[idx] = updated
+                                viewModel.rulesEngine.updateWatchList(list)
+                            }
+                        }
+                        if entry.id != viewModel.rulesEngine.watchList.last?.id {
+                            Divider().padding(.horizontal, 12)
                         }
                     }
                 }
-                .onDelete { indexSet in
-                    var list = viewModel.rulesEngine.watchList
-                    list.remove(atOffsets: indexSet)
-                    viewModel.rulesEngine.updateWatchList(list)
-                }
+                .padding(.vertical, 4)
             }
-            .listStyle(.plain)
 
             Divider()
 
             // Process detection toggle
-            Toggle(isOn: Binding(
-                get: { viewModel.persistence.processDetectionEnabled },
-                set: { newVal in
-                    viewModel.persistence.processDetectionEnabled = newVal
-                    if newVal { viewModel.processMonitor.startMonitoring() }
-                    else { viewModel.processMonitor.stopMonitoring() }
-                }
-            )) {
-                HStack(spacing: 6) {
-                    VStack(alignment: .leading) {
-                        Text("Detect terminal processes")
-                            .font(.caption.bold())
-                        Text("npm, docker, ffmpeg, etc.")
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
+            HStack(spacing: 8) {
+                Toggle("", isOn: Binding(
+                    get: { viewModel.persistence.processDetectionEnabled },
+                    set: { newVal in
+                        viewModel.persistence.processDetectionEnabled = newVal
+                        if newVal { viewModel.processMonitor.startMonitoring() }
+                        else { viewModel.processMonitor.stopMonitoring() }
                     }
-                    InfoButton(text: "Watches for command-line processes by name. Useful for keeping your Mac awake during builds, transcodes, or server processes that run without a visible app window.")
+                ))
+                .toggleStyle(.switch)
+                .controlSize(.small)
+                .labelsHidden()
+
+                VStack(alignment: .leading, spacing: 1) {
+                    Text("Detect terminal processes")
+                        .font(.caption.bold())
+                    Text("npm, docker, ffmpeg, etc.")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
                 }
+
+                InfoButton(text: "Watches for command-line processes by name. Useful for keeping your Mac awake during builds, transcodes, or server processes that run without a visible app window.")
+
+                Spacer()
             }
-            .toggleStyle(.switch)
-            .controlSize(.small)
-            .padding(12)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+
+            Divider()
 
             Button(action: { showingAddApp = true }) {
                 Label("Add App", systemImage: "plus")
                     .font(.caption)
             }
             .buttonStyle(.bordered)
-            .padding(.bottom, 12)
+            .padding(.vertical, 10)
         }
         .onChange(of: showingAddApp) {
             if showingAddApp {
@@ -83,6 +90,7 @@ struct AppWatchRow: View {
         VStack(alignment: .leading, spacing: 0) {
             // ── Main row ──────────────────────────────────────────
             HStack(spacing: 8) {
+
                 Toggle("", isOn: Binding(
                     get: { entry.isEnabled },
                     set: { _ in
@@ -113,19 +121,20 @@ struct AppWatchRow: View {
                 .fixedSize()
 
                 // Expand / collapse
-                Button(action: { withAnimation(.spring(response: 0.28)) { expanded.toggle() } }) {
+                Button(action: { withAnimation(.easeInOut(duration: 0.22)) { expanded.toggle() } }) {
                     Image(systemName: expanded ? "chevron.up" : "chevron.down")
                         .font(.system(size: 10, weight: .semibold))
                         .foregroundStyle(.secondary)
                 }
                 .buttonStyle(.plain)
             }
-            .padding(.vertical, 4)
+            .padding(.vertical, 6)
+            .padding(.horizontal, 12)
 
             // ── Expanded activity detection ───────────────────────
             if expanded {
                 VStack(alignment: .leading, spacing: 8) {
-                    Divider().opacity(0.5)
+                    Divider().opacity(0.5).padding(.horizontal, 12)
 
                     HStack(spacing: 6) {
                         Image(systemName: "waveform.path.ecg")
@@ -192,11 +201,12 @@ struct AppWatchRow: View {
                                 .foregroundStyle(.tertiary)
                         }
                         .padding(.leading, 16)
-                        .transition(.opacity.combined(with: .move(edge: .top)))
+                        .transition(.opacity)
                     }
                 }
-                .padding(.bottom, 6)
-                .transition(.opacity.combined(with: .move(edge: .top)))
+                .padding(.horizontal, 12)
+                .padding(.bottom, 8)
+                .transition(.opacity)
             }
         }
     }
