@@ -50,10 +50,7 @@ struct AppWatchListView: View {
                             .font(.caption2)
                             .foregroundStyle(.secondary)
                     }
-                    Image(systemName: "info.circle")
-                        .font(.system(size: 11))
-                        .foregroundStyle(.tertiary)
-                        .help("Watches for command-line processes by name — useful for keeping your Mac awake during builds, transcodes, or server processes that run without a visible app window.")
+                    InfoButton(text: "Watches for command-line processes by name. Useful for keeping your Mac awake during builds, transcodes, or server processes that run without a visible app window.")
                 }
             }
             .toggleStyle(.switch)
@@ -113,9 +110,10 @@ struct AppWatchRow: View {
             .controlSize(.small)
             .labelsHidden()
             .fixedSize()
-            .help(entry.mode == .whenRunning
-                ? "Awake stays on for as long as this app is running, even if you switch to another window."
-                : "Awake only stays on while this app is the active foreground window. Switches off the moment you click away."
+
+            InfoButton(text: entry.mode == .whenRunning
+                ? "Awake stays on as long as this app is running, even if you switch to another window."
+                : "Awake only stays on while this app is the active foreground window — turns off the moment you click away."
             )
 
         }
