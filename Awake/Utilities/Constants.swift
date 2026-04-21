@@ -94,4 +94,30 @@ enum Constants {
     ]
 
     static let defaultBatteryThreshold = 20
+
+    /// Maps app bundle IDs to the child process names that indicate active work.
+    /// When an app spawns these children, it's considered "actively working."
+    static let appChildProcessMap: [String: [String]] = [
+        "com.apple.dt.Xcode": ["xcodebuild", "clang", "swiftc", "swift-frontend", "ld", "libtool"],
+        "com.todesktop.230313mzl4w4u92": ["node", "tsc", "esbuild", "webpack"],  // Cursor
+        "com.microsoft.VSCode": ["node", "tsc", "esbuild", "webpack"],
+        "com.adobe.Premiere Pro": ["AMECommandLine", "dynamiclinkmanager"],
+        "com.adobe.AfterEffects": ["aerendercore"],
+        "com.blackmagic-design.DaVinci-Resolve": ["DaVinci Resolve"],
+        "com.apple.Terminal": ["bash", "zsh", "sh", "python", "python3", "node", "npm", "ruby", "go"],
+        "com.googlecode.iterm2": ["bash", "zsh", "sh", "python", "python3", "node", "npm", "ruby", "go"],
+        "dev.warp.Warp-Stable": ["bash", "zsh", "sh", "python", "python3", "node", "npm"],
+    ]
+
+    /// AI command bar example suggestions (shown as rotating placeholder text)
+    static let aiCommandSuggestions = [
+        "Stay awake for 2 hours",
+        "Keep on while Xcode is running",
+        "Stay awake until 11pm",
+        "Don't sleep while Docker runs",
+        "Wake me at 9am for 1 hour",
+        "Stay awake while my build finishes",
+        "Keep awake until 5pm then sleep",
+        "Pause for 30 minutes",
+    ]
 }

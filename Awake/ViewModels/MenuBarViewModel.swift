@@ -7,6 +7,7 @@ final class MenuBarViewModel: ObservableObject {
     @Published var activeReasons: [ActivationReason] = []
     @Published var timerRemaining: TimeInterval?
     @Published var isAIConfigured: Bool = false
+    @Published var showOnboarding: Bool = false
 
     let powerManager = PowerManager()
     let appMonitor = AppMonitorService()
@@ -17,6 +18,8 @@ final class MenuBarViewModel: ObservableObject {
     let launchAtLogin = LaunchAtLoginService()
     let notificationService = NotificationService()
     let hotkeyService = HotkeyService()
+    let wifiMonitor: WiFiMonitorService
+    let cpuMonitor: CPUMonitorService
 
     let rulesEngine: RulesEngine
     let aiService: AIService
@@ -28,13 +31,21 @@ final class MenuBarViewModel: ObservableObject {
     init() {
         let aiService = AIService(keychainService: keychainService)
         self.aiService = aiService
+
+        let wifi = WiFiMonitorService()
+        let cpu = CPUMonitorService()
+        self.wifiMonitor = wifi
+        self.cpuMonitor = cpu
+
         self.rulesEngine = RulesEngine(
             powerManager: powerManager,
             appMonitor: appMonitor,
             processMonitor: processMonitor,
             batteryMonitor: batteryMonitor,
             persistence: persistence,
-            notificationService: notificationService
+            notificationService: notificationService,
+            wifiMonitor: wifi,
+            cpuMonitor: cpu
         )
 
         // Apply saved sleep mode
@@ -42,11 +53,13 @@ final class MenuBarViewModel: ObservableObject {
 
         isAIConfigured = aiService.isConfigured
 
+        // Show onboarding on first launch
+        showOnboarding = !persistence.hasCompletedOnboarding
+
         setupBindings()
         startServices()
         setupHotkey()
 
-        // Request notification permission
         notificationService.requestPermission()
     }
 
@@ -60,8 +73,7 @@ final class MenuBarViewModel: ObservableObject {
 
         rulesEngine.startEvaluating()
 
-        // Update timer display every second.
-        // Use .common RunLoop mode so the countdown continues while menus or sheets are open.
+        // Update timer display every second
         let displayTimer = Timer(timeInterval: 1, repeats: true) { [weak self] _ in
             Task { @MainActor in
                 self?.timerRemaining = self?.rulesEngine.timerRemaining
@@ -80,8 +92,6 @@ final class MenuBarViewModel: ObservableObject {
             }
             .store(in: &cancellables)
 
-        // Forward battery monitor changes through viewModel so SettingsView
-        // and other views that access batteryMonitor properties stay up to date.
         batteryMonitor.objectWillChange
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in self?.objectWillChange.send() }
@@ -96,6 +106,11 @@ final class MenuBarViewModel: ObservableObject {
         }
     }
 
+    func completeOnboarding() {
+        persistence.hasCompletedOnboarding = true
+        showOnboarding = false
+    }
+
     func toggleManual() {
         rulesEngine.toggleManual()
     }
@@ -106,6 +121,15 @@ final class MenuBarViewModel: ObservableObject {
 
     func cancelTimer() {
         rulesEngine.cancelTimer()
+    }
+
+    func stopAllSessions() {
+        rulesEngine.clearAllRules()
+        for i in rulesEngine.watchList.indices {
+            rulesEngine.watchList[i].isEnabled = false
+        }
+        persistence.saveWatchList(rulesEngine.watchList)
+        rulesEngine.updateWatchList(rulesEngine.watchList)
     }
 
     func refreshAIStatus() {

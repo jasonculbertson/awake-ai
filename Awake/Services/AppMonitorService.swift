@@ -36,6 +36,13 @@ final class AppMonitorService: ObservableObject {
                 }
             }
             .store(in: &cancellables)
+
+        // Re-evaluate immediately after wake so the power assertion is
+        // re-created before the idle timer has a chance to fire again.
+        center.publisher(for: NSWorkspace.didWakeNotification)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in self?.refresh() }
+            .store(in: &cancellables)
     }
 
     func stopMonitoring() {
@@ -43,25 +50,34 @@ final class AppMonitorService: ObservableObject {
     }
 
     func isAppRunning(bundleID: String) -> Bool {
-        runningBundleIDs.contains(bundleID)
+        // Query live so evaluate() never acts on a stale notification-based cache.
+        NSWorkspace.shared.runningApplications.contains { $0.bundleIdentifier == bundleID }
     }
 
     func isAppRunning(name: String) -> Bool {
         let nameLower = name.lowercased()
-        return runningAppNames.values.contains { appName in
-            appName.lowercased().contains(nameLower) || nameLower.contains(appName.lowercased())
+        return NSWorkspace.shared.runningApplications.contains { app in
+            guard let appName = app.localizedName else { return false }
+            return appName.lowercased().contains(nameLower) || nameLower.contains(appName.lowercased())
         }
     }
 
     func isAppFrontmost(bundleID: String) -> Bool {
-        frontmostBundleID == bundleID
+        NSWorkspace.shared.frontmostApplication?.bundleIdentifier == bundleID
     }
 
     func isAppFrontmost(name: String) -> Bool {
-        guard let frontBID = frontmostBundleID,
-              let frontName = runningAppNames[frontBID] else { return false }
+        guard let front = NSWorkspace.shared.frontmostApplication,
+              let frontName = front.localizedName else { return false }
         let nameLower = name.lowercased()
         return frontName.lowercased().contains(nameLower) || nameLower.contains(frontName.lowercased())
+    }
+
+    /// Returns the PID for an app with the given bundle ID, or -1 if not running.
+    func pid(forBundleID bundleID: String) -> Int32 {
+        NSWorkspace.shared.runningApplications
+            .first { $0.bundleIdentifier == bundleID }
+            .map { Int32($0.processIdentifier) } ?? -1
     }
 
     /// Look up bundle ID by app name from running apps
@@ -94,7 +110,7 @@ final class AppMonitorService: ObservableObject {
         return nil
     }
 
-    private func refresh() {
+    func refresh() {
         let apps = NSWorkspace.shared.runningApplications
         runningBundleIDs = Set(apps.compactMap(\.bundleIdentifier))
         var nameMap: [String: String] = [:]

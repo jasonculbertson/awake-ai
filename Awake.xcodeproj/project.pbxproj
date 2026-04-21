@@ -39,6 +39,9 @@
 		E8CBE17F44BCCB9C97BE888D /* StatusSectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD741196E6EFF017EE928A98 /* StatusSectionView.swift */; };
 		ED59BD8B9955701335EE0413 /* BatteryMonitorService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F11DDFC8E440F8E37A886728 /* BatteryMonitorService.swift */; };
 		FC30DDF95F663CDF99387742 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = FAF4B0EFDE50D47E486E97CD /* Assets.xcassets */; };
+		9E2E6B1F202747F0A8CF15C5 /* WiFiMonitorService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0FF7E71F9764A8F8EFFCEF9 /* WiFiMonitorService.swift */; };
+		F8152437489E4C07A5F4315F /* CPUMonitorService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58AAD883DF5043E49C1D6F69 /* CPUMonitorService.swift */; };
+		6ACFAFB6A9964EC1B27FE319 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2F7ED996DF74323902E1FF8 /* OnboardingView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -77,6 +80,9 @@
 		F8CC8868E869400E93DE6C73 /* AIChatView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIChatView.swift; sourceTree = "<group>"; };
 		FACFEB74C25DA1B981329380 /* PaywallView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaywallView.swift; sourceTree = "<group>"; };
 		FAF4B0EFDE50D47E486E97CD /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		A0FF7E71F9764A8F8EFFCEF9 /* WiFiMonitorService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WiFiMonitorService.swift; sourceTree = "<group>"; };
+		58AAD883DF5043E49C1D6F69 /* CPUMonitorService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CPUMonitorService.swift; sourceTree = "<group>"; };
+		A2F7ED996DF74323902E1FF8 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -92,6 +98,7 @@
 				901F3CDE13FE215E9DCF791D /* RulesListView.swift */,
 				EA59AC679D8432B901CE0430 /* SettingsView.swift */,
 				BD741196E6EFF017EE928A98 /* StatusSectionView.swift */,
+				A2F7ED996DF74323902E1FF8 /* OnboardingView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -127,6 +134,8 @@
 				A4744D888C78E790B1500045 /* ProcessMonitorService.swift */,
 				BFF6EBAD6DFD1C4E3EF37E48 /* RulesEngine.swift */,
 				BBE746FD7C3E6FC95C0EB935 /* StoreKitService.swift */,
+				A0FF7E71F9764A8F8EFFCEF9 /* WiFiMonitorService.swift */,
+				58AAD883DF5043E49C1D6F69 /* CPUMonitorService.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -278,6 +287,9 @@
 				9C5B6E21032355B0809F94EB /* SettingsView.swift in Sources */,
 				E8CBE17F44BCCB9C97BE888D /* StatusSectionView.swift in Sources */,
 				0902505A94A88D83A63B374E /* StoreKitService.swift in Sources */,
+				9E2E6B1F202747F0A8CF15C5 /* WiFiMonitorService.swift in Sources */,
+				F8152437489E4C07A5F4315F /* CPUMonitorService.swift in Sources */,
+				6ACFAFB6A9964EC1B27FE319 /* OnboardingView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

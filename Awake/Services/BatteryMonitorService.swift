@@ -8,6 +8,7 @@ final class BatteryMonitorService: ObservableObject {
     @Published private(set) var hasBattery: Bool = false
 
     private var timer: Timer?
+    private var runLoopSource: CFRunLoopSource?
     private let logger = Logger(subsystem: Constants.appName, category: "BatteryMonitor")
 
     func startMonitoring(interval: TimeInterval = Constants.batteryPollingInterval) {
@@ -18,18 +19,50 @@ final class BatteryMonitorService: ObservableObject {
         }
         RunLoop.main.add(t, forMode: .common)
         timer = t
+
+        // Register IOPowerSource notification for immediate plug/unplug events
+        startPowerSourceNotification()
     }
 
     func stopMonitoring() {
         timer?.invalidate()
         timer = nil
+        stopPowerSourceNotification()
     }
 
     func isBelowThreshold(_ threshold: Int) -> Bool {
         hasBattery && !isPluggedIn && batteryLevel < threshold
     }
 
-    private func refresh() {
+    // MARK: - IOPowerSource Notification
+
+    private func startPowerSourceNotification() {
+        // IOPSNotificationCreateRunLoopSource(callback, context) – both params are passed directly.
+        let selfPtr = Unmanaged.passRetained(self)
+        let callback: IOPowerSourceCallbackType = { context in
+            guard let ctx = context else { return }
+            Unmanaged<BatteryMonitorService>.fromOpaque(ctx).takeUnretainedValue().refresh()
+        }
+        if let src = IOPSNotificationCreateRunLoopSource(callback, selfPtr.toOpaque())?.takeRetainedValue() {
+            runLoopSource = src
+            CFRunLoopAddSource(CFRunLoopGetMain(), src, .defaultMode)
+            logger.info("Power source notification registered")
+        } else {
+            logger.warning("Failed to create power source run loop source")
+            selfPtr.release()
+        }
+    }
+
+    private func stopPowerSourceNotification() {
+        if let source = runLoopSource {
+            CFRunLoopRemoveSource(CFRunLoopGetMain(), source, .defaultMode)
+            runLoopSource = nil
+        }
+    }
+
+    // MARK: - Refresh
+
+    @objc private func refresh() {
         guard let snapshot = IOPSCopyPowerSourcesInfo()?.takeRetainedValue(),
               let sources = IOPSCopyPowerSourcesList(snapshot)?.takeRetainedValue() as? [CFTypeRef],
               !sources.isEmpty else {

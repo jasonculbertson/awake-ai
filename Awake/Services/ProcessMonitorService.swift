@@ -1,3 +1,4 @@
+import AppKit
 import Darwin
 import Foundation
 import os
@@ -6,6 +7,7 @@ struct DetectedProcess: Identifiable, Equatable {
     let id: Int32 // PID
     let name: String
     let startTime: Date
+    let parentPID: Int32
 }
 
 final class ProcessMonitorService: ObservableObject {
@@ -36,31 +38,45 @@ final class ProcessMonitorService: ObservableObject {
         timer = nil
     }
 
+    /// Returns child processes of the given parent PID from the watched list.
+    func childProcesses(of parentPID: Int32) -> [DetectedProcess] {
+        getAllProcesses().filter { $0.parentPID == parentPID }
+    }
+
+    /// Returns all child processes of the given parent PID matching the given name list.
+    func childProcesses(of parentPID: Int32, matchingNames names: [String]) -> [DetectedProcess] {
+        childProcesses(of: parentPID).filter { proc in
+            names.contains { proc.name.lowercased().contains($0.lowercased()) }
+        }
+    }
+
     private func scan() {
-        // Run sysctl on a background queue so the main thread isn't blocked
         let watched = watchedProcessNames
         DispatchQueue.global(qos: .utility).async { [weak self] in
             guard let self else { return }
-            let allProcesses = self.getRunningProcesses()
-            let now = Date()
-            let found = allProcesses.filter { proc in
-                let matchesName = watched.contains { w in
-                    proc.name.lowercased().contains(w.lowercased())
-                }
-                return matchesName && now.timeIntervalSince(proc.startTime) >= Constants.processMinRuntime
-            }
+
+            let found = self.getMatchingProcesses(watched: watched)
+
             DispatchQueue.main.async {
                 self.detectedProcesses = found
             }
         }
     }
 
-    /// Uses sysctl to enumerate processes — works inside App Sandbox
-    private func getRunningProcesses() -> [DetectedProcess] {
+    // MARK: - sysctl helpers
+
+    /// Uses sysctl to find running processes whose name matches the watched list.
+    private func getMatchingProcesses(watched: [String]) -> [DetectedProcess] {
+        getAllProcesses().filter { proc in
+            watched.contains { proc.name.lowercased().contains($0.lowercased()) }
+        }
+    }
+
+    /// Returns all running processes using sysctl KERN_PROC_ALL.
+    func getAllProcesses() -> [DetectedProcess] {
         var mib: [Int32] = [CTL_KERN, KERN_PROC, KERN_PROC_ALL, 0]
         var size: Int = 0
 
-        // Get buffer size
         guard sysctl(&mib, UInt32(mib.count), nil, &size, nil, 0) == 0 else {
             logger.error("sysctl size query failed")
             return []
@@ -69,33 +85,33 @@ final class ProcessMonitorService: ObservableObject {
         let count = size / MemoryLayout<kinfo_proc>.stride
         var procList = [kinfo_proc](repeating: kinfo_proc(), count: count)
 
-        // Get process list
         guard sysctl(&mib, UInt32(mib.count), &procList, &size, nil, 0) == 0 else {
             logger.error("sysctl proc query failed")
             return []
         }
 
         let actualCount = size / MemoryLayout<kinfo_proc>.stride
+        let now = Date()
         var results: [DetectedProcess] = []
 
         for i in 0..<actualCount {
             let proc = procList[i]
             let pid = proc.kp_proc.p_pid
+            guard pid > 0 else { continue }
 
-            // Extract process name from kp_proc.p_comm (C char array)
             let name = withUnsafePointer(to: proc.kp_proc.p_comm) { ptr in
                 ptr.withMemoryRebound(to: CChar.self, capacity: Int(MAXCOMLEN)) { cstr in
                     String(cString: cstr)
                 }
             }
+            guard !name.isEmpty else { continue }
 
-            // Get start time
+            let parentPID = proc.kp_eproc.e_ppid
             let startSec = proc.kp_proc.p_starttime.tv_sec
             let startTime = Date(timeIntervalSince1970: TimeInterval(startSec))
+            guard now.timeIntervalSince(startTime) >= Constants.processMinRuntime else { continue }
 
-            guard !name.isEmpty, pid > 0 else { continue }
-
-            results.append(DetectedProcess(id: pid, name: name, startTime: startTime))
+            results.append(DetectedProcess(id: pid, name: name, startTime: startTime, parentPID: parentPID))
         }
 
         return results

@@ -8,6 +8,16 @@ enum RuleType: String, Codable, CaseIterable {
     case schedule
     case processRunning
     case batteryThreshold
+    // New trigger types
+    case powerAdapter
+    case externalDisplay
+    case wifiSSID
+    case closedLid
+}
+
+enum PowerAdapterState: String, Codable {
+    case connected
+    case disconnected
 }
 
 struct AwakeRule: Identifiable, Codable, Equatable {
@@ -35,6 +45,12 @@ struct AwakeRule: Identifiable, Codable, Equatable {
     // Battery
     var batteryThreshold: Int?
 
+    // Power adapter
+    var powerAdapterState: PowerAdapterState?
+
+    // Wi-Fi SSID
+    var wifiSSID: String?
+
     // Metadata
     var createdByAI: Bool
 
@@ -52,6 +68,8 @@ struct AwakeRule: Identifiable, Codable, Equatable {
         scheduleDays: Set<Int>? = nil,
         processNames: [String]? = nil,
         batteryThreshold: Int? = nil,
+        powerAdapterState: PowerAdapterState? = nil,
+        wifiSSID: String? = nil,
         createdByAI: Bool = false
     ) {
         self.id = id
@@ -67,6 +85,8 @@ struct AwakeRule: Identifiable, Codable, Equatable {
         self.scheduleDays = scheduleDays
         self.processNames = processNames
         self.batteryThreshold = batteryThreshold
+        self.powerAdapterState = powerAdapterState
+        self.wifiSSID = wifiSSID
         self.createdByAI = createdByAI
     }
 }

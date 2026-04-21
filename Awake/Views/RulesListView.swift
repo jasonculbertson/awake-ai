@@ -81,6 +81,10 @@ struct RuleRow: View {
         case .schedule: return "calendar"
         case .processRunning: return "terminal"
         case .batteryThreshold: return "battery.25"
+        case .powerAdapter: return "bolt.fill"
+        case .externalDisplay: return "display"
+        case .wifiSSID: return "wifi"
+        case .closedLid: return "laptopcomputer"
         }
     }
 }

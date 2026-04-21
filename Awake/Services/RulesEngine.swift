@@ -15,12 +15,28 @@ final class RulesEngine: ObservableObject {
     private let batteryMonitor: BatteryMonitorService
     private let persistence: PersistenceService
     private let notificationService: NotificationService
+    private let wifiMonitor: WiFiMonitorService
+    private let cpuMonitor: CPUMonitorService
 
     private var evaluationTimer: Timer?
+    private var delayedTimers: [UUID: Timer] = [:]
     private var cancellables = Set<AnyCancellable>()
     private var previouslyActive = false
     private var previousReasons: [String] = []
     private let logger = Logger(subsystem: Constants.appName, category: "RulesEngine")
+
+    // Session tracking for reminder notifications
+    private var sessionStartDate: Date?
+
+    // Activity-aware monitoring: tracks when each watch entry's app went CPU-idle
+    // Key: AppWatchEntry.id, Value: date when CPU dropped below threshold
+    private var cpuIdleSince: [UUID: Date] = [:]
+
+    // Child process activity tracking: entry IDs that were active due to child processes last tick
+    private var previouslyActiveFromChildren: Set<UUID> = []
+
+    // Screen change observer for external display detection
+    private var screenChangeObserver: NSObjectProtocol?
 
     init(
         powerManager: PowerManager,
@@ -28,7 +44,9 @@ final class RulesEngine: ObservableObject {
         processMonitor: ProcessMonitorService,
         batteryMonitor: BatteryMonitorService,
         persistence: PersistenceService,
-        notificationService: NotificationService = NotificationService()
+        notificationService: NotificationService = NotificationService(),
+        wifiMonitor: WiFiMonitorService = WiFiMonitorService(),
+        cpuMonitor: CPUMonitorService = CPUMonitorService()
     ) {
         self.powerManager = powerManager
         self.appMonitor = appMonitor
@@ -36,6 +54,8 @@ final class RulesEngine: ObservableObject {
         self.batteryMonitor = batteryMonitor
         self.persistence = persistence
         self.notificationService = notificationService
+        self.wifiMonitor = wifiMonitor
+        self.cpuMonitor = cpuMonitor
 
         rules = persistence.loadRules()
         watchList = persistence.loadWatchList()
@@ -45,9 +65,12 @@ final class RulesEngine: ObservableObject {
 
     func startEvaluating(interval: TimeInterval = Constants.evaluationInterval) {
         guard evaluationTimer == nil else { return }
+        restorePendingActions()
+
+        // Start Wi-Fi monitoring
+        wifiMonitor.startMonitoring()
+
         evaluate()
-        // Use .common RunLoop mode so the timer fires even during event tracking
-        // (e.g. while a menu or sheet is open), preventing evaluation gaps.
         let timer = Timer(timeInterval: interval, repeats: true) { [weak self] _ in
             Task { @MainActor in
                 self?.evaluate()
@@ -60,6 +83,12 @@ final class RulesEngine: ObservableObject {
     func stopEvaluating() {
         evaluationTimer?.invalidate()
         evaluationTimer = nil
+        wifiMonitor.stopMonitoring()
+
+        if let obs = screenChangeObserver {
+            NotificationCenter.default.removeObserver(obs)
+            screenChangeObserver = nil
+        }
     }
 
     // MARK: - Rule Management
@@ -126,7 +155,6 @@ final class RulesEngine: ObservableObject {
     // MARK: - Timer
 
     func startTimer(minutes: Int) {
-        // Remove existing timers
         rules.removeAll { $0.type == .timer }
 
         let endDate = Date().addingTimeInterval(TimeInterval(minutes * 60))
@@ -157,6 +185,52 @@ final class RulesEngine: ObservableObject {
         return remaining > 0 ? remaining : nil
     }
 
+    // MARK: - Power Adapter Rule Convenience
+
+    func setPowerAdapterRule(enabled: Bool, state: PowerAdapterState = .connected) {
+        // Remove any existing power adapter rules
+        rules.removeAll { $0.type == .powerAdapter }
+
+        if enabled {
+            let label = state == .connected ? "When power adapter connected" : "When power adapter disconnected"
+            let rule = AwakeRule(
+                type: .powerAdapter,
+                label: label,
+                powerAdapterState: state
+            )
+            rules.append(rule)
+        }
+
+        persistence.saveRules(rules)
+        persistence.powerAdapterRuleEnabled = enabled
+        evaluate()
+    }
+
+    var isPowerAdapterRuleEnabled: Bool {
+        rules.contains { $0.type == .powerAdapter && $0.isEnabled }
+    }
+
+    // MARK: - Closed Lid Convenience
+
+    func setClosedLidRule(enabled: Bool) {
+        rules.removeAll { $0.type == .closedLid }
+
+        if enabled {
+            let rule = AwakeRule(
+                type: .closedLid,
+                label: "While lid is closed"
+            )
+            rules.append(rule)
+        }
+
+        persistence.saveRules(rules)
+        evaluate()
+    }
+
+    var isClosedLidRuleEnabled: Bool {
+        rules.contains { $0.type == .closedLid && $0.isEnabled }
+    }
+
     // MARK: - AI Command Handling
 
     func applyCommand(_ command: AICommand) -> String {
@@ -166,12 +240,8 @@ final class RulesEngine: ObservableObject {
             return command.responseDescription
 
         case .setDelayedTimer(let delay, let duration):
-            // Use Timer on .common RunLoop (not asyncAfter, which drifts under App Nap)
-            let delaySeconds = TimeInterval(delay * 60)
-            let t = Timer(timeInterval: delaySeconds, repeats: false) { [weak self] _ in
-                Task { @MainActor in self?.startTimer(minutes: duration) }
-            }
-            RunLoop.main.add(t, forMode: .common)
+            let fireDate = Date().addingTimeInterval(TimeInterval(delay * 60))
+            schedulePersistedDelayedTimer(fireDate: fireDate, durationMinutes: duration)
             return command.responseDescription
 
         case .awakeUntil(let hour, let minute):
@@ -185,7 +255,6 @@ final class RulesEngine: ObservableObject {
                 return "Could not parse that time."
             }
 
-            // If the time has already passed today, use tomorrow
             if targetDate <= Date() {
                 targetDate = calendar.date(byAdding: .day, value: 1, to: targetDate) ?? targetDate
             }
@@ -212,28 +281,21 @@ final class RulesEngine: ObservableObject {
                 targetDate = calendar.date(byAdding: .day, value: 1, to: targetDate) ?? targetDate
             }
 
-            let delay = targetDate.timeIntervalSinceNow
             let duration = durationMinutes ?? 60
-            let t = Timer(timeInterval: delay, repeats: false) { [weak self] _ in
-                Task { @MainActor in self?.startTimer(minutes: duration) }
-            }
-            RunLoop.main.add(t, forMode: .common)
+            schedulePersistedDelayedTimer(fireDate: targetDate, durationMinutes: duration)
             return command.responseDescription
 
         case .watchApp(let name, let mode):
             let nameLower = name.lowercased()
-            // Try to find in existing watch list (by name, case-insensitive, partial match)
             if let index = watchList.firstIndex(where: {
                 $0.appName.lowercased().contains(nameLower) || nameLower.contains($0.appName.lowercased())
             }) {
                 watchList[index].isEnabled = true
                 watchList[index].mode = mode
-                logger.info("AI: Enabled existing watch entry: \(self.watchList[index].appName) (\(self.watchList[index].bundleIdentifier))")
+                logger.info("AI: Enabled existing watch entry: \(self.watchList[index].appName)")
             } else {
-                // Look up bundle ID from running apps via appMonitor
                 let bundleID = appMonitor.findBundleID(forName: name) ?? ""
                 let resolvedName = appMonitor.findAppName(forQuery: name) ?? name
-                logger.info("AI: Adding new watch entry: \(resolvedName) bundleID=\(bundleID)")
                 let entry = AppWatchEntry(
                     bundleIdentifier: bundleID,
                     appName: resolvedName,
@@ -243,7 +305,6 @@ final class RulesEngine: ObservableObject {
                 watchList.append(entry)
             }
             persistence.saveWatchList(watchList)
-            logger.info("AI: Watchlist saved with \(self.watchList.count) entries, \(self.watchList.filter(\.isEnabled).count) enabled")
             evaluate()
             return command.responseDescription
 
@@ -265,14 +326,11 @@ final class RulesEngine: ObservableObject {
                 updated.timerEndDate = newEnd
                 updateRule(updated)
             } else {
-                // No timer running, just start one
                 startTimer(minutes: mins)
             }
             return command.responseDescription
 
         case .sleepAt(let hour, let minute):
-            // Stay awake until that time via a timer only — no manual rule,
-            // so sleep is allowed naturally when the timer expires.
             let calendar = Calendar.current
             var components = calendar.dateComponents([.year, .month, .day], from: Date())
             components.hour = hour
@@ -291,33 +349,28 @@ final class RulesEngine: ObservableObject {
             return command.responseDescription
 
         case .pause(let mins):
-            // Save current state, disable everything, re-enable after delay
             let savedManual = isManuallyActive
             let savedEnabledWatchIDs = watchList.filter(\.isEnabled).map(\.id)
-            // Disable everything
             if isManuallyActive { toggleManual() }
             for i in watchList.indices where watchList[i].isEnabled {
                 watchList[i].isEnabled = false
             }
             persistence.saveWatchList(watchList)
             evaluate()
-            // Re-enable after pause (use Timer on .common, not asyncAfter — more reliable under App Nap)
-            let resumeTimer = Timer(timeInterval: TimeInterval(mins * 60), repeats: false) { [weak self] _ in
-                Task { @MainActor in
-                    guard let self else { return }
-                    if savedManual { self.toggleManual() }
-                    for i in self.watchList.indices where savedEnabledWatchIDs.contains(self.watchList[i].id) {
-                        self.watchList[i].isEnabled = true
-                    }
-                    self.persistence.saveWatchList(self.watchList)
-                    self.evaluate()
-                }
-            }
-            RunLoop.main.add(resumeTimer, forMode: .common)
+            let fireDate = Date().addingTimeInterval(TimeInterval(mins * 60))
+            var action = PersistenceService.PendingAction(
+                id: UUID(),
+                fireDate: fireDate,
+                durationMinutes: 0,
+                kind: .pauseResume
+            )
+            action.savedManualActive = savedManual
+            action.savedEnabledWatchIDs = savedEnabledWatchIDs
+            persistence.addPendingAction(action)
+            scheduleTimerForAction(action)
             return command.responseDescription
 
         case .watchProcess(let processName):
-            // Add to watched process list and enable process detection
             if !processMonitor.watchedProcessNames.contains(where: { $0.lowercased() == processName.lowercased() }) {
                 processMonitor.watchedProcessNames.append(processName)
             }
@@ -354,21 +407,18 @@ final class RulesEngine: ObservableObject {
 
         case .cancelRule(let name):
             let nameLower = name.lowercased()
-            // Try rules first
             if let index = rules.firstIndex(where: { $0.label.lowercased().contains(nameLower) || nameLower.contains($0.type.rawValue.lowercased()) }) {
                 rules.remove(at: index)
                 persistence.saveRules(rules)
                 evaluate()
                 return command.responseDescription
             }
-            // Try watch list
             if let index = watchList.firstIndex(where: { $0.appName.lowercased().contains(nameLower) || nameLower.contains($0.appName.lowercased()) }) {
                 watchList[index].isEnabled = false
                 persistence.saveWatchList(watchList)
                 evaluate()
                 return "Disabled: \(watchList[index].appName)."
             }
-            // Try "timer"
             if nameLower.contains("timer") {
                 cancelTimer()
                 return "Timer cancelled."
@@ -410,6 +460,8 @@ final class RulesEngine: ObservableObject {
     // MARK: - Evaluation
 
     private func evaluate() {
+        powerManager.validateAssertion()
+
         var reasons: [ActivationReason] = []
 
         // Check battery threshold override first
@@ -420,12 +472,12 @@ final class RulesEngine: ObservableObject {
             return
         }
 
-        // Check manual rule
+        // Manual rule
         if let manual = rules.first(where: { $0.type == .manual && $0.isEnabled }) {
             reasons.append(ActivationReason(ruleID: manual.id, description: "Manually activated", icon: "hand.tap"))
         }
 
-        // Check timer rules
+        // Timer rules
         for rule in rules where rule.type == .timer && rule.isEnabled {
             if let endDate = rule.timerEndDate {
                 let remaining = endDate.timeIntervalSinceNow
@@ -433,68 +485,184 @@ final class RulesEngine: ObservableObject {
                     let formatted = formatTimeInterval(remaining)
                     reasons.append(ActivationReason(ruleID: rule.id, description: "Timer: \(formatted) remaining", icon: "timer"))
                 } else {
-                    // Timer expired, clean it up
                     rules.removeAll { $0.id == rule.id }
                     persistence.saveRules(rules)
                 }
             }
         }
 
-        // Check app watch list
+        // App watch list (with activity-aware monitoring)
+        var currentlyActiveFromChildren: Set<UUID> = []
         for i in watchList.indices where watchList[i].isEnabled {
             var entry = watchList[i]
 
-            // If bundle ID is empty, try to resolve it from running apps
+            // Resolve bundle ID if empty
             if entry.bundleIdentifier.isEmpty {
                 if let resolvedBID = appMonitor.findBundleID(forName: entry.appName) {
                     entry.bundleIdentifier = resolvedBID
                     watchList[i].bundleIdentifier = resolvedBID
                     persistence.saveWatchList(watchList)
-                    logger.info("Resolved bundle ID for \(entry.appName): \(resolvedBID)")
                 }
             }
 
-            let isActive: Bool
+            let isRunning: Bool
             if !entry.bundleIdentifier.isEmpty {
                 switch entry.mode {
                 case .whenRunning:
-                    isActive = appMonitor.isAppRunning(bundleID: entry.bundleIdentifier)
+                    isRunning = appMonitor.isAppRunning(bundleID: entry.bundleIdentifier)
                 case .whenFrontmost:
-                    isActive = appMonitor.isAppFrontmost(bundleID: entry.bundleIdentifier)
+                    isRunning = appMonitor.isAppFrontmost(bundleID: entry.bundleIdentifier)
                 }
             } else {
-                // Fallback: match by name
                 switch entry.mode {
                 case .whenRunning:
-                    isActive = appMonitor.isAppRunning(name: entry.appName)
+                    isRunning = appMonitor.isAppRunning(name: entry.appName)
                 case .whenFrontmost:
-                    isActive = appMonitor.isAppFrontmost(name: entry.appName)
+                    isRunning = appMonitor.isAppFrontmost(name: entry.appName)
                 }
             }
 
-            if isActive {
-                reasons.append(ActivationReason(
-                    ruleID: entry.id,
-                    description: "\(entry.appName) is \(entry.mode == .whenRunning ? "running" : "frontmost")",
-                    icon: "app.badge.checkmark"
-                ))
+            guard isRunning else {
+                // App not running — clear CPU idle tracking
+                cpuIdleSince.removeValue(forKey: entry.id)
+                continue
             }
+
+            // --- Activity-aware monitoring ---
+
+            // 1. Child process detection
+            if entry.watchChildProcesses {
+                let appPID = appMonitor.pid(forBundleID: entry.bundleIdentifier)
+                let childNames = Constants.appChildProcessMap[entry.bundleIdentifier] ?? []
+
+                if appPID > 0 {
+                    let activeChildren = processMonitor.childProcesses(of: appPID, matchingNames: childNames)
+                    if !activeChildren.isEmpty {
+                        let childNameList = activeChildren.prefix(2).map(\.name).joined(separator: ", ")
+                        reasons.append(ActivationReason(
+                            ruleID: entry.id,
+                            description: "\(entry.appName) is working (\(childNameList))",
+                            icon: "hammer.fill"
+                        ))
+                        currentlyActiveFromChildren.insert(entry.id)
+                        cpuIdleSince.removeValue(forKey: entry.id)
+                        continue
+                    }
+                }
+            }
+
+            // 2. CPU threshold check
+            if let threshold = entry.cpuThreshold {
+                let appPID = appMonitor.pid(forBundleID: entry.bundleIdentifier)
+                if appPID > 0, let usage = cpuMonitor.cpuUsage(for: appPID) {
+                    if usage < threshold {
+                        // App is below CPU threshold
+                        let idleSince = cpuIdleSince[entry.id] ?? Date()
+                        if cpuIdleSince[entry.id] == nil {
+                            cpuIdleSince[entry.id] = idleSince
+                        }
+                        let idleMinutes = Date().timeIntervalSince(idleSince) / 60
+                        if idleMinutes >= Double(entry.cpuIdleMinutes) {
+                            // Been idle long enough — skip this entry
+                            logger.info("CPU idle for \(entry.appName) (\(usage, format: .fixed(precision: 1))% < \(threshold)%) — skipping")
+                            continue
+                        }
+                    } else {
+                        // Active — reset idle timer
+                        cpuIdleSince.removeValue(forKey: entry.id)
+                    }
+                }
+            }
+
+            // App is running and passes activity checks
+            reasons.append(ActivationReason(
+                ruleID: entry.id,
+                description: "\(entry.appName) is \(entry.mode == .whenRunning ? "running" : "frontmost")",
+                icon: "app.badge.checkmark"
+            ))
         }
 
-        // Check schedule rules
+        // Detect work-completion transitions (child processes disappeared)
+        let justFinished = previouslyActiveFromChildren.subtracting(currentlyActiveFromChildren)
+        for entryID in justFinished {
+            if let entry = watchList.first(where: { $0.id == entryID }) {
+                notificationService.sendWorkCompleted(
+                    appName: entry.appName,
+                    reason: "Build/process finished"
+                )
+            }
+        }
+        previouslyActiveFromChildren = currentlyActiveFromChildren
+
+        // Schedule rules
         for rule in rules where rule.type == .schedule && rule.isEnabled {
             if isInSchedule(rule) {
                 reasons.append(ActivationReason(ruleID: rule.id, description: rule.label, icon: "calendar"))
             }
         }
 
-        // Check process detection
+        // Process detection
         if persistence.processDetectionEnabled && processMonitor.hasMatchingProcesses {
             let names = processMonitor.detectedProcesses.map(\.name).joined(separator: ", ")
             reasons.append(ActivationReason(
                 description: "Processes running: \(names)",
                 icon: "terminal"
             ))
+        }
+
+        // Power adapter trigger
+        for rule in rules where rule.type == .powerAdapter && rule.isEnabled {
+            if let adapterState = rule.powerAdapterState {
+                let conditionMet: Bool
+                switch adapterState {
+                case .connected:
+                    conditionMet = batteryMonitor.isPluggedIn
+                case .disconnected:
+                    conditionMet = !batteryMonitor.isPluggedIn && batteryMonitor.hasBattery
+                }
+                if conditionMet {
+                    reasons.append(ActivationReason(
+                        ruleID: rule.id,
+                        description: rule.label,
+                        icon: "bolt.fill"
+                    ))
+                }
+            }
+        }
+
+        // External display trigger
+        for rule in rules where rule.type == .externalDisplay && rule.isEnabled {
+            if hasExternalDisplay() {
+                reasons.append(ActivationReason(
+                    ruleID: rule.id,
+                    description: "External display connected",
+                    icon: "display"
+                ))
+            }
+        }
+
+        // Wi-Fi SSID trigger
+        for rule in rules where rule.type == .wifiSSID && rule.isEnabled {
+            if let ssid = rule.wifiSSID, wifiMonitor.matches(ssid: ssid) {
+                reasons.append(ActivationReason(
+                    ruleID: rule.id,
+                    description: "Connected to \(ssid)",
+                    icon: "wifi"
+                ))
+            }
+        }
+
+        // Closed lid mode
+        for rule in rules where rule.type == .closedLid && rule.isEnabled {
+            if isLidClosed() {
+                // Force system-only mode when lid is closed (display assertion is useless)
+                powerManager.mode = .systemOnly
+                reasons.append(ActivationReason(
+                    ruleID: rule.id,
+                    description: "Keeping awake with lid closed",
+                    icon: "laptopcomputer"
+                ))
+            }
         }
 
         if reasons.isEmpty {
@@ -507,21 +675,31 @@ final class RulesEngine: ObservableObject {
     private func activate(reasons: [ActivationReason]) {
         let reasonText = reasons.map(\.description).joined(separator: "; ")
 
-        // Apply sleep prevention mode from settings
-        powerManager.mode = persistence.sleepPreventionMode
+        // Restore saved sleep mode (may have been overridden by closed lid)
+        if !rules.contains(where: { $0.type == .closedLid && $0.isEnabled && isLidClosed() }) {
+            powerManager.mode = persistence.sleepPreventionMode
+        }
+
         let asserted = powerManager.preventSleep(reason: reasonText)
 
         if !asserted {
-            // IOPMAssertion failed — don't claim we're keeping the Mac awake
             logger.error("preventSleep failed — deactivating to avoid false 'awake' state")
             deactivate()
             return
         }
 
-        // Notify on state change (was inactive, now active)
         let reasonDescriptions = reasons.map(\.description)
-        if !previouslyActive && persistence.notificationsEnabled {
-            notificationService.sendActivated(reasons: reasonDescriptions)
+
+        // Session start tracking for reminder notifications
+        if !previouslyActive {
+            sessionStartDate = Date()
+            if persistence.sessionReminderEnabled {
+                let interval = TimeInterval(persistence.sessionReminderHours * 3600)
+                notificationService.scheduleSessionReminder(after: interval)
+            }
+            if persistence.notificationsEnabled {
+                notificationService.sendActivated(reasons: reasonDescriptions)
+            }
         }
 
         previouslyActive = true
@@ -530,10 +708,15 @@ final class RulesEngine: ObservableObject {
     }
 
     private func deactivate() {
-        // Notify on state change (was active, now inactive)
-        if previouslyActive && persistence.notificationsEnabled {
-            let reason = previousReasons.first ?? "no active rules"
-            notificationService.sendDeactivated(reason: reason)
+        if previouslyActive {
+            // Cancel any pending session reminder
+            notificationService.cancelSessionReminder()
+            sessionStartDate = nil
+
+            if persistence.notificationsEnabled {
+                let reason = previousReasons.first ?? "no active rules"
+                notificationService.sendDeactivated(reason: reason)
+            }
         }
 
         previouslyActive = false
@@ -541,6 +724,8 @@ final class RulesEngine: ObservableObject {
         powerManager.allowSleep()
         currentState = .inactive
     }
+
+    // MARK: - Schedule Helpers
 
     private func isInSchedule(_ rule: AwakeRule) -> Bool {
         guard let startHour = rule.scheduleStartHour,
@@ -558,10 +743,46 @@ final class RulesEngine: ObservableObject {
         if startHour <= endHour {
             return currentHour >= startHour && currentHour < endHour
         } else {
-            // Wraps midnight
             return currentHour >= startHour || currentHour < endHour
         }
     }
+
+    // MARK: - Display Helpers
+
+    private func hasExternalDisplay() -> Bool {
+        // Any screen beyond the built-in display counts as external
+        if NSScreen.screens.count > 1 { return true }
+        // Single screen: check if it's NOT the built-in (e.g. Mac mini or Mac Pro)
+        guard let screen = NSScreen.main else { return false }
+        let screenNumber = screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? CGDirectDisplayID
+        return screenNumber.map { CGDisplayIsBuiltin($0) == 0 } ?? false
+    }
+
+    // MARK: - Lid State Helper
+
+    private func isLidClosed() -> Bool {
+        let service = IOServiceGetMatchingService(kIOMainPortDefault, IOServiceMatching("AppleSmartBattery"))
+        guard service != IO_OBJECT_NULL else { return false }
+        defer { IOObjectRelease(service) }
+
+        // Try to read the LidOpen / AppleClamshellState property
+        if let lidOpen = IORegistryEntryCreateCFProperty(service, "LidOpen" as CFString, kCFAllocatorDefault, 0)?.takeRetainedValue() as? Bool {
+            return !lidOpen
+        }
+
+        // Fallback: check IOPMrootDomain for AppleClamshellState
+        let rootDomain = IOServiceGetMatchingService(kIOMainPortDefault, IOServiceMatching("IOPMrootDomain"))
+        guard rootDomain != IO_OBJECT_NULL else { return false }
+        defer { IOObjectRelease(rootDomain) }
+
+        if let clamshell = IORegistryEntryCreateCFProperty(rootDomain, "AppleClamshellState" as CFString, kCFAllocatorDefault, 0)?.takeRetainedValue() as? Bool {
+            return clamshell
+        }
+
+        return false
+    }
+
+    // MARK: - Format Helpers
 
     private func formatTimeInterval(_ interval: TimeInterval) -> String {
         let hours = Int(interval) / 3600
@@ -572,8 +793,9 @@ final class RulesEngine: ObservableObject {
         return "\(minutes)m"
     }
 
+    // MARK: - Bindings Setup
+
     private func setupBindings() {
-        // Re-evaluate when app monitoring changes
         appMonitor.$runningBundleIDs
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in self?.evaluate() }
@@ -584,12 +806,105 @@ final class RulesEngine: ObservableObject {
             .sink { [weak self] _ in self?.evaluate() }
             .store(in: &cancellables)
 
-        // Re-evaluate immediately when process detection results change so that
-        // sleep prevention activates/deactivates without waiting for the 5s timer tick.
         processMonitor.$detectedProcesses
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in self?.evaluate() }
             .store(in: &cancellables)
+
+        // Re-evaluate when plugged in / unplugged (instant via IOPSNotification)
+        batteryMonitor.$isPluggedIn
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in self?.evaluate() }
+            .store(in: &cancellables)
+
+        // Re-evaluate when Wi-Fi SSID changes
+        wifiMonitor.$currentSSID
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in self?.evaluate() }
+            .store(in: &cancellables)
+
+        // Re-evaluate when screens are added/removed
+        screenChangeObserver = NotificationCenter.default.addObserver(
+            forName: NSApplication.didChangeScreenParametersNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.evaluate()
+        }
+
+        // Handle "Stop Session" action from notification
+        NotificationCenter.default.addObserver(
+            forName: .stopSessionFromNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in
+                self?.clearAllRules()
+                // Also disable all watch list entries
+                if let self {
+                    for i in self.watchList.indices {
+                        self.watchList[i].isEnabled = false
+                    }
+                    self.persistence.saveWatchList(self.watchList)
+                    self.evaluate()
+                }
+            }
+        }
     }
 
+    // MARK: - Persistent Delayed Actions
+
+    private func schedulePersistedDelayedTimer(fireDate: Date, durationMinutes: Int) {
+        let action = PersistenceService.PendingAction(
+            id: UUID(),
+            fireDate: fireDate,
+            durationMinutes: durationMinutes,
+            kind: .delayedTimer
+        )
+        persistence.addPendingAction(action)
+        scheduleTimerForAction(action)
+    }
+
+    private func scheduleTimerForAction(_ action: PersistenceService.PendingAction) {
+        let delay = max(0, action.fireDate.timeIntervalSinceNow)
+        if delay <= 0 {
+            handleActionFired(action)
+            return
+        }
+        let t = Timer(timeInterval: delay, repeats: false) { [weak self] _ in
+            Task { @MainActor in
+                self?.handleActionFired(action)
+            }
+        }
+        RunLoop.main.add(t, forMode: .common)
+        delayedTimers[action.id] = t
+    }
+
+    private func handleActionFired(_ action: PersistenceService.PendingAction) {
+        persistence.removePendingAction(id: action.id)
+        delayedTimers.removeValue(forKey: action.id)
+
+        switch action.kind {
+        case .delayedTimer:
+            startTimer(minutes: action.durationMinutes)
+        case .pauseResume:
+            if action.savedManualActive == true && !isManuallyActive {
+                toggleManual()
+            }
+            if let savedIDs = action.savedEnabledWatchIDs {
+                for i in watchList.indices where savedIDs.contains(watchList[i].id) {
+                    watchList[i].isEnabled = true
+                }
+                persistence.saveWatchList(watchList)
+            }
+            evaluate()
+        }
+    }
+
+    private func restorePendingActions() {
+        let actions = persistence.loadPendingActions()
+        for action in actions {
+            scheduleTimerForAction(action)
+        }
+    }
 }

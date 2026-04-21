@@ -8,6 +8,12 @@ struct StatusSectionView: View {
     @State private var showAPIKeySetup = false
     @State private var showPaywall = false
 
+    // Rotating placeholder state
+    @State private var placeholderIndex = 0
+    @State private var placeholderVisible = true
+    private let suggestions = Constants.aiCommandSuggestions
+    private let placeholderTimer = Timer.publish(every: 3.5, on: .main, in: .common).autoconnect()
+
     var body: some View {
         VStack(spacing: 0) {
             VStack(spacing: 12) {
@@ -19,11 +25,22 @@ struct StatusSectionView: View {
             }
             .padding(12)
 
-            // AI chat area — always visible (BYOK or managed backend)
             aiChatSection
         }
         .onAppear {
             viewModel.refreshAIStatus()
+        }
+        .onReceive(placeholderTimer) { _ in
+            guard aiInput.isEmpty else { return }
+            withAnimation(.easeInOut(duration: 0.4)) {
+                placeholderVisible = false
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                placeholderIndex = (placeholderIndex + 1) % suggestions.count
+                withAnimation(.easeInOut(duration: 0.4)) {
+                    placeholderVisible = true
+                }
+            }
         }
         .onChange(of: showAPIKeySetup) {
             if showAPIKeySetup {
@@ -120,7 +137,6 @@ struct StatusSectionView: View {
 
     private var aiChatSection: some View {
         VStack(spacing: 0) {
-            // Messages
             if !aiMessages.isEmpty {
                 ScrollViewReader { proxy in
                     ScrollView {
@@ -154,7 +170,7 @@ struct StatusSectionView: View {
 
             Spacer(minLength: 0)
 
-            // AI input
+            // AI input with rotating placeholder
             VStack(alignment: .leading, spacing: 4) {
                 HStack {
                     Text("AI Command")
@@ -174,10 +190,21 @@ struct StatusSectionView: View {
                 }
 
                 HStack(spacing: 8) {
-                    TextField("e.g. \"Stay awake for 2 hours\"", text: $aiInput)
-                        .textFieldStyle(.plain)
-                        .font(.caption)
-                        .onSubmit { sendAIMessage() }
+                    ZStack(alignment: .leading) {
+                        // Animated placeholder (shown when input is empty)
+                        if aiInput.isEmpty {
+                            Text(suggestions[placeholderIndex])
+                                .font(.caption)
+                                .foregroundStyle(Color(nsColor: .placeholderTextColor))
+                                .opacity(placeholderVisible ? 1 : 0)
+                                .allowsHitTesting(false)
+                        }
+
+                        TextField("", text: $aiInput)
+                            .textFieldStyle(.plain)
+                            .font(.caption)
+                            .onSubmit { sendAIMessage() }
+                    }
 
                     Button(action: { sendAIMessage() }) {
                         Image(systemName: "arrow.up.circle.fill")
@@ -195,28 +222,6 @@ struct StatusSectionView: View {
                         .strokeBorder(Color(nsColor: .separatorColor).opacity(0.3), lineWidth: 1)
                 )
             }
-            .padding(.horizontal, 12)
-            .padding(.bottom, 10)
-        }
-    }
-
-    private var aiKeyPrompt: some View {
-        VStack {
-            Spacer()
-            Button(action: { showAPIKeySetup = true }) {
-                HStack(spacing: 6) {
-                    Image(systemName: "key")
-                        .font(.caption2)
-                    Text("Connect your AI API key to start")
-                        .font(.caption2)
-                }
-                .foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity)
-                .padding(8)
-                .background(Color(nsColor: .controlBackgroundColor).opacity(0.5))
-                .clipShape(RoundedRectangle(cornerRadius: 8))
-            }
-            .buttonStyle(.plain)
             .padding(.horizontal, 12)
             .padding(.bottom, 10)
         }

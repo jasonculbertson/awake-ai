@@ -7,6 +7,7 @@ struct SettingsView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
+
                 // Launch at Login
                 Toggle(isOn: Binding(
                     get: { viewModel.launchAtLogin.isEnabled },
@@ -39,9 +40,9 @@ struct SettingsView: View {
                     .pickerStyle(.radioGroup)
                     .controlSize(.small)
 
-                    Text(viewModel.persistence.sleepPreventionMode == .displayOnly
-                        ? "Keeps screen on but allows system sleep"
-                        : "Prevents both screen and system sleep")
+                    Text(viewModel.persistence.sleepPreventionMode == .systemOnly
+                        ? "Prevents system sleep but allows display to dim"
+                        : "Keeps screen on and prevents system sleep")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 }
@@ -49,19 +50,51 @@ struct SettingsView: View {
                 Divider()
 
                 // Notifications
-                Toggle(isOn: Binding(
-                    get: { viewModel.persistence.notificationsEnabled },
-                    set: { viewModel.persistence.notificationsEnabled = $0 }
-                )) {
-                    Label("Notifications", systemImage: "bell")
-                        .font(.caption.bold())
-                }
-                .toggleStyle(.switch)
-                .controlSize(.small)
+                VStack(alignment: .leading, spacing: 8) {
+                    Toggle(isOn: Binding(
+                        get: { viewModel.persistence.notificationsEnabled },
+                        set: { viewModel.persistence.notificationsEnabled = $0 }
+                    )) {
+                        Label("Notifications", systemImage: "bell")
+                            .font(.caption.bold())
+                    }
+                    .toggleStyle(.switch)
+                    .controlSize(.small)
 
-                Text("Notify when auto-activating or deactivating")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
+                    Text("Notify when auto-activating or deactivating")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+
+                    // Session reminder
+                    Toggle(isOn: Binding(
+                        get: { viewModel.persistence.sessionReminderEnabled },
+                        set: { viewModel.persistence.sessionReminderEnabled = $0 }
+                    )) {
+                        Label("Session reminder", systemImage: "clock.badge.exclamationmark")
+                            .font(.caption)
+                    }
+                    .toggleStyle(.switch)
+                    .controlSize(.small)
+
+                    if viewModel.persistence.sessionReminderEnabled {
+                        HStack(spacing: 8) {
+                            Text("Remind after")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                            Stepper(
+                                value: Binding(
+                                    get: { viewModel.persistence.sessionReminderHours },
+                                    set: { viewModel.persistence.sessionReminderHours = $0 }
+                                ),
+                                in: 1...12
+                            ) {
+                                Text("\(viewModel.persistence.sessionReminderHours)h")
+                                    .font(.caption2.monospacedDigit())
+                            }
+                            .controlSize(.mini)
+                        }
+                    }
+                }
 
                 Divider()
 
@@ -75,6 +108,79 @@ struct SettingsView: View {
                         .padding(6)
                         .background(Color(nsColor: .controlBackgroundColor))
                         .clipShape(RoundedRectangle(cornerRadius: 4))
+                    Text("Right-click the menu bar icon for quick presets")
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                }
+
+                Divider()
+
+                // Smart Triggers
+                VStack(alignment: .leading, spacing: 10) {
+                    Label("Smart Triggers", systemImage: "bolt.horizontal")
+                        .font(.caption.bold())
+
+                    // Power adapter toggle
+                    Toggle(isOn: Binding(
+                        get: { viewModel.rulesEngine.isPowerAdapterRuleEnabled },
+                        set: { viewModel.rulesEngine.setPowerAdapterRule(enabled: $0) }
+                    )) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Label("Stay awake when plugged in", systemImage: "bolt.fill")
+                                .font(.caption)
+                            Text("Activates automatically when AC power is connected")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .toggleStyle(.switch)
+                    .controlSize(.small)
+
+                    // Closed lid mode
+                    Toggle(isOn: Binding(
+                        get: { viewModel.rulesEngine.isClosedLidRuleEnabled },
+                        set: { viewModel.rulesEngine.setClosedLidRule(enabled: $0) }
+                    )) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Label("Stay awake with lid closed", systemImage: "laptopcomputer")
+                                .font(.caption)
+                            Text("Keeps system awake in clamshell mode (best with AC power)")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .toggleStyle(.switch)
+                    .controlSize(.small)
+
+                    // External display trigger
+                    let hasExternalDisplayRule = viewModel.rulesEngine.rules.contains {
+                        $0.type == .externalDisplay && $0.isEnabled
+                    }
+                    Toggle(isOn: Binding(
+                        get: { hasExternalDisplayRule },
+                        set: { enabled in
+                            if enabled {
+                                viewModel.rulesEngine.addRule(AwakeRule(
+                                    type: .externalDisplay,
+                                    label: "When external display connected"
+                                ))
+                            } else {
+                                viewModel.rulesEngine.rules
+                                    .filter { $0.type == .externalDisplay }
+                                    .forEach { viewModel.rulesEngine.removeRule(id: $0.id) }
+                            }
+                        }
+                    )) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Label("Stay awake with external display", systemImage: "display")
+                                .font(.caption)
+                            Text("Activates when a monitor or TV is connected")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .toggleStyle(.switch)
+                    .controlSize(.small)
                 }
 
                 Divider()

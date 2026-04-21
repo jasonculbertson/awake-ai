@@ -3,28 +3,40 @@ import IOKit.pwr_mgt
 import os
 
 enum SleepPreventionMode: String, Codable, CaseIterable {
-    case systemAndDisplay = "System & Display"
-    case displayOnly = "Display Only"
-
-    var assertionType: String {
-        switch self {
-        case .systemAndDisplay:
-            return kIOPMAssertionTypePreventUserIdleSystemSleep
-        case .displayOnly:
-            return kIOPMAssertionTypePreventUserIdleDisplaySleep
-        }
-    }
+    /// Holds both a display-sleep and a system-sleep assertion, matching Jolt of Caffeine.
+    case screenAndSystem = "Keep Screen On"
+    /// Holds only a system-sleep assertion; display may still dim (useful for background workflows).
+    case systemOnly = "System Sleep Only"
 }
 
 final class PowerManager: ObservableObject {
     @Published private(set) var isAsserted = false
-    @Published var mode: SleepPreventionMode = .systemAndDisplay
+    @Published var mode: SleepPreventionMode = .screenAndSystem
 
-    private var assertionID: IOPMAssertionID = 0
+    /// Display-sleep assertion (PreventUserIdleDisplaySleep)
+    private var displayAssertionID: IOPMAssertionID = 0
+    /// System-sleep assertion (PreventUserIdleSystemSleep) — held alongside display assertion
+    /// in screenAndSystem mode, matching Jolt of Caffeine's dual-assertion approach.
+    private var systemAssertionID: IOPMAssertionID = 0
     private var currentMode: SleepPreventionMode?
     /// ProcessInfo activity token — prevents App Nap from throttling our timers
     private var activityToken: NSObjectProtocol?
     private let logger = Logger(subsystem: Constants.appName, category: "PowerManager")
+
+    /// Checks whether the current assertions are still valid via IOKit.
+    /// If any have been invalidated externally, resets internal state so the
+    /// next `preventSleep` call will re-create them.
+    func validateAssertion() {
+        guard isAsserted else { return }
+        let displayValid = displayAssertionID != 0 &&
+            IOPMAssertionCopyProperties(displayAssertionID)?.takeRetainedValue() != nil
+        let systemValid = systemAssertionID == 0 ||
+            IOPMAssertionCopyProperties(systemAssertionID)?.takeRetainedValue() != nil
+        if !displayValid || !systemValid {
+            logger.warning("One or more power assertions are no longer valid — resetting")
+            releaseAssertion()
+        }
+    }
 
     @discardableResult
     func preventSleep(reason: String = "Awake is keeping the system awake") -> Bool {
@@ -34,30 +46,29 @@ final class PowerManager: ObservableObject {
 
         guard !isAsserted else { return true }
 
-        let result = IOPMAssertionCreateWithName(
-            mode.assertionType as CFString,
+        // Always create the display-sleep assertion
+        let displayResult = IOPMAssertionCreateWithName(
+            kIOPMAssertionTypePreventUserIdleDisplaySleep as CFString,
             IOPMAssertionLevel(kIOPMAssertionLevelOn),
             reason as CFString,
-            &assertionID
+            &displayAssertionID
         )
+        guard displayResult == kIOReturnSuccess else {
+            logger.error("Failed to create display assertion: \(displayResult)")
+            return false
+        }
 
-        guard result == kIOReturnSuccess else {
-            logger.error("Failed to create power assertion: \(result) — retrying once")
-            // Retry once after a brief yield
-            let retry = IOPMAssertionCreateWithName(
-                mode.assertionType as CFString,
+        // In screenAndSystem mode also hold a system-sleep assertion, matching Caffeine
+        if mode == .screenAndSystem {
+            let systemResult = IOPMAssertionCreateWithName(
+                kIOPMAssertionTypePreventUserIdleSystemSleep as CFString,
                 IOPMAssertionLevel(kIOPMAssertionLevelOn),
                 reason as CFString,
-                &assertionID
+                &systemAssertionID
             )
-            guard retry == kIOReturnSuccess else {
-                logger.error("Power assertion retry also failed: \(retry)")
-                return false
+            if systemResult != kIOReturnSuccess {
+                logger.warning("Failed to create system assertion: \(systemResult) — display assertion still held")
             }
-            isAsserted = true
-            currentMode = mode
-            beginActivityToken(reason: reason)
-            return true
         }
 
         isAsserted = true
@@ -82,9 +93,14 @@ final class PowerManager: ObservableObject {
     // MARK: - Private helpers
 
     private func releaseAssertion() {
-        guard isAsserted else { return }
-        IOPMAssertionRelease(assertionID)
-        assertionID = 0
+        if displayAssertionID != 0 {
+            IOPMAssertionRelease(displayAssertionID)
+            displayAssertionID = 0
+        }
+        if systemAssertionID != 0 {
+            IOPMAssertionRelease(systemAssertionID)
+            systemAssertionID = 0
+        }
         isAsserted = false
         currentMode = nil
     }
