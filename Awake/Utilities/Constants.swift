@@ -11,7 +11,7 @@ enum AIProvider: String, Codable, CaseIterable, Identifiable {
         switch self {
         case .anthropic: return "https://api.anthropic.com/v1/messages"
         case .openai: return "https://api.openai.com/v1/chat/completions"
-        case .gemini: return "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"
+        case .gemini: return "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent"
         }
     }
 
@@ -19,7 +19,7 @@ enum AIProvider: String, Codable, CaseIterable, Identifiable {
         switch self {
         case .anthropic: return "claude-sonnet-4-20250514"
         case .openai: return "gpt-4o-mini"
-        case .gemini: return "gemini-2.0-flash"
+        case .gemini: return "gemini-1.5-flash"
         }
     }
 

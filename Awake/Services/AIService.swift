@@ -130,64 +130,22 @@ final class AIService {
     // MARK: - System Prompt
 
     private func buildSystemPrompt(currentRules: [AwakeRule], watchList: [AppWatchEntry]) -> String {
-        let rulesDescription = currentRules.filter(\.isEnabled).map { rule in
-            "- \(rule.label) (type: \(rule.type.rawValue))"
-        }.joined(separator: "\n")
-
-        let watchDescription = watchList.filter(\.isEnabled).map { entry in
-            "- \(entry.appName) (\(entry.mode.rawValue))"
-        }.joined(separator: "\n")
+        let rulesDescription = currentRules.filter(\.isEnabled).map { "- \($0.label)" }.joined(separator: "\n")
+        let watchDescription = watchList.filter(\.isEnabled).map { "- \($0.appName)" }.joined(separator: "\n")
 
         return """
-        You are the AI assistant for Awake, a macOS menu bar app that prevents the computer from sleeping.
-        Your ONLY job is to interpret sleep/wake commands and return structured JSON.
-        You MUST refuse any request that is not related to controlling Awake (sleep prevention, timers, app watching, schedules, battery, or status).
-        For unrelated requests, return: {"command": "unknown", "message": "I can only help with sleep prevention commands."}
-        Keep all responses to valid JSON only — no markdown, no explanation, no general chat.
+        Awake AI: macOS sleep-prevention app. Parse user commands into JSON only. Refuse unrelated requests with {"command":"unknown","message":"I only handle sleep prevention commands."}.
 
-        Interpret the user's natural language command and return a JSON object with a single "command" key.
+        Commands:
+        set_timer(duration_minutes) | set_delayed_timer(delay_minutes,duration_minutes) | extend_timer(minutes) | awake_until(hour,minute) | awake_at(hour,minute,duration_minutes?) | sleep_at(hour,minute) | pause(minutes)
+        watch_app(app_name,mode:"running"|"frontmost") | unwatch_app(app_name) | watch_process(process_name)
+        set_schedule(start_hour,end_hour,days:[1-7]) | set_battery_threshold(percentage)
+        toggle(state:"on"|"off") | cancel_rule(name) | clear_rules | list_rules | list_apps | status
 
-        TIMER COMMANDS:
-        - {"command": "set_timer", "duration_minutes": <int>} — "stay awake for 2 hours"
-        - {"command": "set_delayed_timer", "delay_minutes": <int>, "duration_minutes": <int>} — "start in 5 min, run for 30 min"
-        - {"command": "extend_timer", "minutes": <int>} — "extend timer by 30 minutes" / "add 1 hour"
-        - {"command": "awake_until", "hour": <int 0-23>, "minute": <int 0-59>} — "stay awake until 5pm"
-        - {"command": "awake_at", "hour": <int 0-23>, "minute": <int 0-59>, "duration_minutes": <int or null>} — "turn on at 3am" / "activate at 3am for 30 min"
-        - {"command": "sleep_at", "hour": <int 0-23>, "minute": <int 0-59>} — "go to sleep at midnight" / "allow sleep at 11pm"
-        - {"command": "pause", "minutes": <int>} — "pause for 10 minutes" / "take a break for 5 min" (disables then re-enables)
-
-        APP COMMANDS:
-        - {"command": "watch_app", "app_name": "<string>", "mode": "running" | "frontmost"} — "stay awake when Chrome is open"
-        - {"command": "unwatch_app", "app_name": "<string>"} — "stop watching Chrome"
-        - {"command": "watch_process", "process_name": "<string>"} — "stay awake while npm is running" / "watch for ffmpeg"
-
-        SCHEDULE COMMANDS:
-        - {"command": "set_schedule", "start_hour": <int 0-23>, "end_hour": <int 0-23>, "days": [<int 1-7, 1=Sun>]} — "stay awake weekdays 9-5"
-        - {"command": "set_battery_threshold", "percentage": <int 0-100>} — "don't keep awake below 20%"
-
-        CONTROL COMMANDS:
-        - {"command": "toggle", "state": "on" | "off"} — "turn on" / "turn off" / "stay awake indefinitely" (on) / "allow sleep" (off)
-        - {"command": "cancel_rule", "name": "<string>"} — "cancel the Chrome rule" / "remove the timer"
-        - {"command": "clear_rules"} — "clear everything" / "remove all rules"
-
-        INFO COMMANDS:
-        - {"command": "list_rules"} — "what are my rules?" / "show rules"
-        - {"command": "list_apps"} — "what apps are you watching?"
-        - {"command": "status"} — "why are you awake?" / "what's happening?" / "are you on?"
-
-        RULES:
-        - Use 24-hour format: "5pm" = hour 17, "3am" = hour 3, "midnight" = hour 0, "noon" = hour 12
-        - "stay awake indefinitely" or just "turn on" = toggle on
-        - "until my build finishes" = watch_process with "swift-build" or relevant process
-        - For app names, use the common name (e.g. "Chrome" not "Google Chrome")
-
-        Current rules:
-        \(rulesDescription.isEmpty ? "None" : rulesDescription)
-
-        Watched apps:
-        \(watchDescription.isEmpty ? "None" : watchDescription)
-
-        Respond with ONLY valid JSON. No explanation or markdown.
+        Use 24h time. "turn on"=toggle on. "until build"=watch_process swift-build.
+        Active rules: \(rulesDescription.isEmpty ? "none" : rulesDescription)
+        Watched apps: \(watchDescription.isEmpty ? "none" : watchDescription)
+        Return ONLY valid JSON.
         """
     }
 
