@@ -15,6 +15,7 @@ struct SettingsView: View {
                     toggleRow(
                         icon: "arrow.right.circle", color: .blue,
                         title: "Launch at login",
+                        info: "Awake starts automatically when you log in, so sleep prevention is always available.",
                         isOn: Binding(
                             get: { viewModel.launchAtLogin.isEnabled },
                             set: { _ in viewModel.launchAtLogin.toggle() }
@@ -29,6 +30,10 @@ struct SettingsView: View {
                             iconBadge("display", color: .purple)
                             Text("Sleep prevention")
                                 .font(.caption.bold())
+                            Image(systemName: "info.circle")
+                                .font(.system(size: 11))
+                                .foregroundStyle(.tertiary)
+                                .help("Screen & System: keeps the display on and prevents sleep.\nSystem Only: prevents the Mac from sleeping but allows the screen to dim — useful when you need the CPU running but don't need the display.")
                             Spacer()
                         }
                         Picker("", selection: Binding(
@@ -64,6 +69,7 @@ struct SettingsView: View {
                         icon: "bolt.fill", color: .yellow,
                         title: "Stay awake when plugged in",
                         subtitle: "Activates when AC power is connected",
+                        info: "Automatically enables Awake whenever your Mac is connected to power, and deactivates when you unplug.",
                         isOn: Binding(
                             get: { viewModel.rulesEngine.isPowerAdapterRuleEnabled },
                             set: { viewModel.rulesEngine.setPowerAdapterRule(enabled: $0) }
@@ -76,6 +82,7 @@ struct SettingsView: View {
                         icon: "laptopcomputer", color: .indigo,
                         title: "Stay awake with lid closed",
                         subtitle: "Clamshell mode (best with AC power)",
+                        info: "Keeps your Mac running when the lid is shut and an external display is connected. Without AC power, this will drain your battery quickly.",
                         isOn: Binding(
                             get: { viewModel.rulesEngine.isClosedLidRuleEnabled },
                             set: { viewModel.rulesEngine.setClosedLidRule(enabled: $0) }
@@ -91,6 +98,7 @@ struct SettingsView: View {
                         icon: "display", color: .teal,
                         title: "Stay awake with external display",
                         subtitle: "Activates when a monitor or TV is connected",
+                        info: "Enables Awake whenever an HDMI, DisplayPort, or USB-C display is detected. Useful for desk setups where you always want sleep prevention when docked.",
                         isOn: Binding(
                             get: { hasExternalDisplayRule },
                             set: { enabled in
@@ -117,6 +125,7 @@ struct SettingsView: View {
                         icon: "bell.fill", color: .orange,
                         title: "Notify on activation",
                         subtitle: "Alert when Awake turns on or off",
+                        info: "Sends a notification when Awake automatically activates or deactivates due to a smart trigger or timer expiring.",
                         isOn: Binding(
                             get: { viewModel.persistence.notificationsEnabled },
                             set: { viewModel.persistence.notificationsEnabled = $0 }
@@ -129,6 +138,7 @@ struct SettingsView: View {
                         toggleRow(
                             icon: "clock.badge.exclamationmark", color: .red,
                             title: "Session reminder",
+                            info: "Reminds you that Awake has been active for a while, in case you forgot to turn it off.",
                             isOn: Binding(
                                 get: { viewModel.persistence.sessionReminderEnabled },
                                 set: { viewModel.persistence.sessionReminderEnabled = $0 }
@@ -165,6 +175,7 @@ struct SettingsView: View {
                         toggleRow(
                             icon: "battery.25", color: .green,
                             title: "Stop when battery is low",
+                            info: "Automatically deactivates Awake when battery drops below the threshold, so sleep prevention doesn't drain a low battery.",
                             isOn: Binding(
                                 get: { viewModel.persistence.batteryThresholdEnabled },
                                 set: { viewModel.persistence.batteryThresholdEnabled = $0 }
@@ -400,6 +411,7 @@ struct SettingsView: View {
         color: Color,
         title: String,
         subtitle: String? = nil,
+        info: String? = nil,
         isOn: Binding<Bool>
     ) -> some View {
         HStack(spacing: 8) {
@@ -410,11 +422,21 @@ struct SettingsView: View {
                     Text(sub).font(.caption2).foregroundStyle(.secondary)
                 }
             }
+            if let tip = info {
+                infoIcon(tip)
+            }
             Spacer()
             Toggle("", isOn: isOn)
                 .toggleStyle(.switch)
                 .controlSize(.mini)
                 .labelsHidden()
         }
+    }
+
+    private func infoIcon(_ tip: String) -> some View {
+        Image(systemName: "info.circle")
+            .font(.system(size: 11))
+            .foregroundStyle(.tertiary)
+            .help(tip)
     }
 }
