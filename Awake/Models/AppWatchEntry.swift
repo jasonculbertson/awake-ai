@@ -1,8 +1,8 @@
 import Foundation
 
 enum WatchMode: String, Codable, CaseIterable {
-    case whenRunning = "When Running"
-    case whenFrontmost = "When Frontmost"
+    case whenRunning   = "While open"
+    case whenFrontmost = "While in focus"
 }
 
 struct AppWatchEntry: Identifiable, Codable, Equatable {
