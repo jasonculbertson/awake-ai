@@ -829,7 +829,9 @@ final class RulesEngine: ObservableObject {
             object: nil,
             queue: .main
         ) { [weak self] _ in
-            self?.evaluate()
+            Task { @MainActor in
+                self?.evaluate()
+            }
         }
 
         // Handle "Stop Session" action from notification

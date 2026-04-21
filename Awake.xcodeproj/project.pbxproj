@@ -303,7 +303,7 @@
 				CODE_SIGN_ENTITLEMENTS = Awake/Awake.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = 2WRVG46HV2;
 				ENABLE_HARDENED_RUNTIME = YES;
 				INFOPLIST_FILE = Awake/Info.plist;
@@ -312,7 +312,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 1.0.0;
+				MARKETING_VERSION = 1.0.1;
 				PRODUCT_BUNDLE_IDENTIFIER = com.jasonculbertson.awake;
 				PRODUCT_NAME = Awake;
 				SDKROOT = macosx;
@@ -327,7 +327,7 @@
 				CODE_SIGN_ENTITLEMENTS = Awake/Awake.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = 2WRVG46HV2;
 				ENABLE_HARDENED_RUNTIME = YES;
 				INFOPLIST_FILE = Awake/Info.plist;
@@ -336,7 +336,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 1.0.0;
+				MARKETING_VERSION = 1.0.1;
 				PRODUCT_BUNDLE_IDENTIFIER = com.jasonculbertson.awake;
 				PRODUCT_NAME = Awake;
 				SDKROOT = macosx;

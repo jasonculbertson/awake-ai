@@ -314,7 +314,7 @@ struct SettingsView: View {
                 settingsCard {
                     HStack {
                         VStack(alignment: .leading, spacing: 2) {
-                            Text("Awake AI  v1.0.0")
+                            Text("Awake AI  v1.0.1")
                                 .font(.caption.bold())
                             Text("A modern replacement for Caffeine")
                                 .font(.caption2)

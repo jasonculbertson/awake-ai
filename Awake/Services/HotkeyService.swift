@@ -59,7 +59,7 @@ final class HotkeyService {
             return
         }
 
-        var hotkeyID = Self.hotkeyID
+        let hotkeyID = Self.hotkeyID
         let registerResult = RegisterEventHotKey(
             keyCode,
             modifiers,
