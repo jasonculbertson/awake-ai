@@ -251,7 +251,7 @@ struct SettingsView: View {
 
                 // About
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Awake v1.0.0")
+                    Text("Awake v1.0.2")
                         .font(.caption.bold())
                     Text("Smart sleep prevention for macOS")
                         .font(.caption2)
