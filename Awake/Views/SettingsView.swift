@@ -253,7 +253,7 @@ struct SettingsView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Awake v1.0.0")
                         .font(.caption.bold())
-                    Text("A modern replacement for Caffeine")
+                    Text("Smart sleep prevention for macOS")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 }

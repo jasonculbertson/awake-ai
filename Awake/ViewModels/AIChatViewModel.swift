@@ -37,12 +37,12 @@ final class AIChatViewModel: ObservableObject {
         if !aiService.isConfigured {
             messages.append(ChatMessage(
                 role: .system,
-                content: "Add your Anthropic API key in Settings to enable AI commands."
+                content: "Add an AI API key in Settings to enable AI commands."
             ))
         } else {
             messages.append(ChatMessage(
                 role: .assistant,
-                content: "Hi! Tell me what to do. For example:\n\"Stay awake for 2 hours\"\n\"Keep awake when Cursor is running\"\n\"Show my rules\""
+                content: "Hi! Tell me what to do. For example:\n\"Stay awake for 2 hours\"\n\"Keep awake while an app is running\"\n\"Show my rules\""
             ))
         }
     }

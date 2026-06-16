@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Support — Awake AI</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #0a0a0a;
+      color: #e8e8e8;
+      line-height: 1.7;
+    }
+    header {
+      text-align: center;
+      padding: 64px 24px 48px;
+    }
+    .logo {
+      font-size: 32px;
+      font-weight: 800;
+      letter-spacing: -1px;
+      color: #fff;
+      margin-bottom: 8px;
+      text-decoration: none;
+      display: inline-block;
+    }
+    .logo span { color: #f5a623; }
+    header h1 {
+      font-size: 28px;
+      font-weight: 700;
+      color: #fff;
+      margin-top: 24px;
+      margin-bottom: 8px;
+    }
+    header p {
+      font-size: 16px;
+      color: #888;
+    }
+    .content {
+      max-width: 680px;
+      margin: 0 auto;
+      padding: 0 24px 80px;
+    }
+    .section {
+      margin-bottom: 48px;
+    }
+    .section h2 {
+      font-size: 18px;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 16px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+    .contact-card {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 14px;
+      padding: 24px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .contact-card .icon {
+      font-size: 32px;
+      flex-shrink: 0;
+    }
+    .contact-card h3 {
+      font-size: 15px;
+      font-weight: 600;
+      color: #fff;
+      margin-bottom: 4px;
+    }
+    .contact-card p {
+      font-size: 13px;
+      color: #888;
+      margin-bottom: 12px;
+    }
+    .contact-card a {
+      display: inline-block;
+      background: #f5a623;
+      color: #000;
+      font-weight: 700;
+      font-size: 13px;
+      padding: 8px 20px;
+      border-radius: 50px;
+      text-decoration: none;
+    }
+    .contact-card a:hover { opacity: 0.9; }
+    .faq-item {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 12px;
+    }
+    .faq-item h3 {
+      font-size: 14px;
+      font-weight: 600;
+      color: #fff;
+      margin-bottom: 8px;
+    }
+    .faq-item p {
+      font-size: 13px;
+      color: #888;
+      line-height: 1.6;
+    }
+    .faq-item code {
+      background: rgba(245,166,35,0.15);
+      color: #f5a623;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: ui-monospace, monospace;
+      font-size: 12px;
+    }
+    footer {
+      text-align: center;
+      padding: 32px;
+      font-size: 13px;
+      color: #333;
+      border-top: 1px solid #111;
+    }
+    footer a { color: #555; text-decoration: none; }
+    footer a:hover { color: #f5a623; }
+  </style>
+</head>
+<body>
+  <header>
+    <a class="logo" href="/awake-ai/">Awake <span>AI</span></a>
+    <h1>Support</h1>
+    <p>We're here to help — get answers or reach out directly.</p>
+  </header>
+
+  <div class="content">
+
+    <div class="section">
+      <h2>Contact Us</h2>
+      <div class="contact-card">
+        <div class="icon">✉️</div>
+        <div>
+          <h3>Email Support</h3>
+          <p>Have a question, found a bug, or need help getting set up? Send us a message and we'll get back to you as quickly as possible.</p>
+          <a href="mailto:support@awake-ai.app">support@awake-ai.app</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>Frequently Asked Questions</h2>
+
+      <div class="faq-item">
+        <h3>How do I activate sleep prevention?</h3>
+        <p>Click the Awake AI icon in your Mac menu bar to open the app. Click the sun icon or toggle the switch on the Timer tab to keep your Mac awake. You can also use the global shortcut <code>Cmd + Shift + A</code> to toggle it from anywhere.</p>
+      </div>
+
+      <div class="faq-item">
+        <h3>How do I use AI commands?</h3>
+        <p>Open the app from the menu bar and click the <strong>AI</strong> tab. Type a command in plain English — for example, "Stay awake for 2 hours" or "Keep awake while an app is running" — and Awake AI will set it up automatically. AI commands require a subscription or your own API key.</p>
+      </div>
+
+      <div class="faq-item">
+        <h3>Do I need an API key?</h3>
+        <p>Not necessarily. Awake AI includes a free tier of managed AI commands. For unlimited AI commands, you can subscribe or enter your own API key from a supported AI provider in Settings → AI Providers → Manage API Keys.</p>
+      </div>
+
+      <div class="faq-item">
+        <h3>Where is my API key stored?</h3>
+        <p>Your API key is stored securely in the macOS Keychain on your device. It never leaves your Mac and is never sent to our servers.</p>
+      </div>
+
+      <div class="faq-item">
+        <h3>How does App Watch work?</h3>
+        <p>The <strong>Apps</strong> tab lets you add any application. When that app is running (or in the foreground, depending on the mode you choose), Awake AI will automatically keep your Mac awake. When the app quits, normal sleep behavior resumes.</p>
+      </div>
+
+      <div class="faq-item">
+        <h3>What is the Battery Threshold setting?</h3>
+        <p>When enabled, Awake AI will automatically deactivate sleep prevention when your battery level drops below the threshold you set. This prevents your Mac from running out of battery unexpectedly during long tasks.</p>
+      </div>
+
+      <div class="faq-item">
+        <h3>How do I restore my subscription?</h3>
+        <p>Open the app, go to the <strong>Settings</strong> tab, scroll down to AI Commands, and tap <strong>Restore Purchases</strong>. Make sure you're signed in to the same Apple ID used to purchase the subscription.</p>
+      </div>
+
+      <div class="faq-item">
+        <h3>How do I cancel my subscription?</h3>
+        <p>Open <strong>System Settings → Apple ID → Subscriptions</strong> on your Mac and cancel the Awake AI subscription from there. You'll retain access until the end of the billing period.</p>
+      </div>
+
+      <div class="faq-item">
+        <h3>Awake AI is not keeping my Mac awake — what should I check?</h3>
+        <p>First, confirm the app is active (the menu bar icon should show a sun). Check that Battery Threshold isn't triggering — if your battery is low, the threshold may be deactivating the app. Also check System Settings → Lock Screen and make sure no other system policy is forcing sleep.</p>
+      </div>
+
+      <div class="faq-item">
+        <h3>How do I uninstall Awake AI?</h3>
+        <p>Quit Awake AI from the menu bar (click the icon → ✕ → Quit). Then open Finder, go to Applications, and drag <strong>Awake AI</strong> to the Trash.</p>
+      </div>
+    </div>
+
+  </div>
+
+  <footer>
+    © 2026 Modane Management &nbsp;·&nbsp;
+    <a href="/awake-ai/">Home</a> &nbsp;·&nbsp;
+    <a href="/awake-ai/privacy">Privacy Policy</a>
+  </footer>
+</body>
+</html>

@@ -32,7 +32,7 @@ struct AIChatInnerView: View {
             if viewModel.aiService.isConfigured {
                 messages = [ChatMessage(
                     role: .assistant,
-                    content: "Tell me what to do:\n\"Stay awake for 2 hours\"\n\"Keep awake when Cursor is running\"\n\"Show my rules\""
+                    content: "Tell me what to do:\n\"Stay awake for 2 hours\"\n\"Keep awake while an app is running\"\n\"Show my rules\""
                 )]
             }
         }
@@ -57,7 +57,7 @@ struct AIChatInnerView: View {
                 .foregroundStyle(.secondary)
             Text("AI Chat requires an API key")
                 .font(.subheadline)
-            Text("Add your Anthropic API key to use natural language commands.")
+            Text("Add an AI API key in Settings to use natural language commands.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
