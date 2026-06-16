@@ -57,7 +57,7 @@ struct AIChatInnerView: View {
                 .foregroundStyle(.secondary)
             Text("AI Chat requires an API key")
                 .font(.subheadline)
-            Text("Add an AI API key in Settings to use natural language commands.")
+            Text("Add your Anthropic API key to use natural language commands.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)

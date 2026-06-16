@@ -37,7 +37,7 @@ final class AIChatViewModel: ObservableObject {
         if !aiService.isConfigured {
             messages.append(ChatMessage(
                 role: .system,
-                content: "Add an AI API key in Settings to enable AI commands."
+                content: "Add your Anthropic API key in Settings to enable AI commands."
             ))
         } else {
             messages.append(ChatMessage(
