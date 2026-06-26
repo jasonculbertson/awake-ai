@@ -159,6 +159,21 @@ struct AppWatchRow: View {
 
                     if entry.cpuThreshold != nil {
                         VStack(alignment: .leading, spacing: 6) {
+                            // Warn when CPU monitoring is unlikely to be useful
+                            if Constants.serverSideBundleIDs.contains(entry.bundleIdentifier) {
+                                HStack(alignment: .top, spacing: 6) {
+                                    Image(systemName: "exclamationmark.triangle.fill")
+                                        .font(.caption2)
+                                        .foregroundStyle(.yellow)
+                                    Text("\(entry.appName) does its work on remote servers, so local CPU stays low even when active. This feature may deactivate Awake unexpectedly — consider leaving it off.")
+                                        .font(.caption2)
+                                        .foregroundStyle(.secondary)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                }
+                                .padding(8)
+                                .background(.yellow.opacity(0.08), in: RoundedRectangle(cornerRadius: 6))
+                            }
+
                             // CPU threshold
                             HStack(spacing: 8) {
                                 Text("CPU threshold")

@@ -4,7 +4,7 @@
 Awake AI
 
 ## Subtitle (30 chars max)
-AI-Powered Sleep Prevention
+AI Agent Sleep Prevention
 
 ## Price
 Free (with In-App Purchases)
@@ -19,38 +19,36 @@ Secondary: Productivity
 
 ## Description (4000 chars max)
 
-Awake AI is the first AI-powered sleep prevention app for Mac. Free to download with all core features included. Go beyond simple on/off toggles — just tell Awake what you want in plain English, and it handles the rest.
+Awake AI is sleep prevention for AI agent coding.
 
-Try 3 AI commands free. Subscribe for $0.99/month for unlimited — or use your own API key for free, forever.
+Your agent is editing files, running tests, building, and launching local previews. Your Mac should stay awake until the run is done.
 
-"Stay awake until my build finishes."
-"Keep the screen on when Cursor is open."
-"Stay awake until 5pm, then let it sleep."
+Awake AI is a menu bar utility built for long autonomous coding sessions. It keeps your Mac awake while agent work is active, then steps back automatically when the task exits or goes idle.
 
-SMART APP DETECTION
-Awake automatically prevents sleep when your favorite apps are running. Pre-configured for popular developer tools — Cursor, VS Code, Xcode, Terminal, iTerm2, Warp, and Claude — with the ability to add any app you use.
-
-Choose between "when running" or "when frontmost" modes per app. If Xcode is compiling in the background, your Mac stays awake. When you close it, sleep resumes.
+BUILT FOR AGENT RUNS
+- Keep your Mac awake while an AI coding agent works
+- Watch selected apps, shell processes, test runs, builds, scripts, and previews
+- Turn off automatically when agent activity stops
+- Use timers and reminders for unattended coding sessions
 
 AI COMMAND BAR
-Powered by your own AI API key (Anthropic, OpenAI, or Google AI). Type natural language commands:
-- "Stay awake for 2 hours"
-- "Keep awake when Chrome is open"
-- "Turn on at 3am for 30 minutes"
-- "Pause for 10 minutes"
-- "Stay awake until my npm build finishes"
+Type natural language commands:
+- "Stay awake while my agent codes"
+- "Keep awake until tests finish"
+- "Do not sleep while the agent run is active"
+- "Turn off when the process exits"
 - "Why are you awake?"
 
-Supports 17+ command types including timers, delayed starts, schedules, process detection, and more.
+Supports timers, delayed starts, schedules, process detection, and status questions.
 
 PROCESS DETECTION
-Automatically detects long-running terminal processes — npm, docker, ffmpeg, cargo, xcodebuild, webpack, and more. If your build is running, your Mac stays awake.
+Automatically detects long-running shell processes such as agent sessions, builds, scripts, test runs, and preview servers. If your coding work is running, your Mac stays awake.
 
 BATTERY AWARE
 Set a battery threshold to prevent draining. If your battery drops below your limit, Awake steps back and lets macOS sleep — even if other rules say otherwise.
 
 DISPLAY-ONLY MODE
-Choose between full sleep prevention or display-only mode that keeps your screen on while allowing system sleep. Perfect for monitoring dashboards or presentations.
+Choose between full sleep prevention or display-only mode that keeps your screen on while allowing system sleep. Useful for watching logs, previews, and unattended runs.
 
 QUICK TIMER
 One-tap presets: 15m, 30m, 1h, 2h, 4h, 8h. Or ask the AI for any duration.
@@ -62,15 +60,13 @@ DESIGNED FOR YOUR MENU BAR
 Lives quietly in your menu bar. Elegant glass-effect UI that matches macOS design language. Sun icon when awake, moon when sleeping. At a glance, you know.
 
 PRIVACY FIRST
-Your AI API key is stored locally on your device. No accounts, no cloud, no tracking. Awake never phones home.
-
-Awake is what Caffeine should have been.
+No accounts are required for core sleep prevention. App settings stay on your Mac. AI commands can be used with a subscription or with your own supported provider key.
 
 ## Keywords (100 chars max)
-caffeine,sleep,awake,prevent,screen,timer,developer,AI,menu bar,productivity,keep awake,nosleep
+caffeine,sleep,awake,prevent,screen,timer,developer,AI,agent,coding,menu bar,keep awake
 
 ## What's New in This Version
-Initial release. The first AI-powered sleep prevention utility for Mac.
+Repositioned screenshots and metadata around AI agent coding sessions. Removes third-party app and platform references from App Store metadata.
 
 ## Privacy Policy URL
 (You'll need to host a privacy policy. See PRIVACY_POLICY.md)
@@ -96,7 +92,7 @@ Initial release. The first AI-powered sleep prevention utility for Mac.
 
 ### Pricing
 - Price: $4.99 (Tier 5)
-- All territories
+- All territories except China Mainland
 
 ### Screenshots Required
 - At least one screenshot
@@ -104,7 +100,10 @@ Initial release. The first AI-powered sleep prevention utility for Mac.
 - Show: Timer page, Apps page, AI chat, Settings
 
 ### App Review Notes
-"Awake is a menu bar utility that prevents Mac sleep. The AI chat feature requires users to provide their own API key from Anthropic, OpenAI, or Google AI. The app does not include any API keys and makes no API calls without user-provided credentials. The app uses IOPMAssertion (IOKit) to prevent sleep — the same API used by Apple's caffeinate command."
+"Awake AI is a menu bar utility that prevents Mac sleep during long AI agent coding sessions, builds, test runs, scripts, and other user-selected workflows. Core sleep prevention does not require an account. AI command features can be used through an in-app subscription or with a user-provided supported provider key. The app uses IOPMAssertion (IOKit) to prevent sleep, the same macOS API used by Apple's caffeinate command."
+
+### App Review Resolution for China Mainland / AI Availability
+"We have removed China Mainland from the app's availability in App Store Connect. Awake AI is not offered in China Mainland, so third-party AI-provider availability concerns should no longer apply to this submission."
 
 ### Age Rating
 - 4+ (no objectionable content)

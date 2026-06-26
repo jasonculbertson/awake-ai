@@ -109,6 +109,19 @@ enum Constants {
         "dev.warp.Warp-Stable": ["bash", "zsh", "sh", "python", "python3", "node", "npm"],
     ]
 
+    /// Apps that do their heavy lifting on remote servers, so local CPU is not
+    /// a reliable indicator of activity. Warn users if they enable CPU-based
+    /// idle detection for these apps.
+    static let serverSideBundleIDs: Set<String> = [
+        "com.anthropic.claudefordesktop",       // Claude
+        "com.openai.chat",                       // ChatGPT
+        "com.microsoft.teams2",                  // Teams
+        "com.tinyspeck.slackmacgap",             // Slack
+        "com.figma.Desktop",                     // Figma
+        "com.notion.id",                         // Notion
+        "com.linear.Linear",                     // Linear
+    ]
+
     /// AI command bar example suggestions (shown as rotating placeholder text)
     static let aiCommandSuggestions = [
         "Stay awake for 2 hours",
